@@ -78,10 +78,6 @@ console.log("PROFILE ERROR CHECK:", profile);
 
   document.getElementById('loadingNote').style.display = 'none';
 
- console.log("PROFILE OBJECT:", profile);
-
-alert(JSON.stringify(profile, null, 2));
-
 if (!profile || !profile.is_admin) {
   document.getElementById('deniedNote').style.display = 'block';
   return;
