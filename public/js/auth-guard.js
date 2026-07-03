@@ -12,11 +12,16 @@ async function requireAuth() {
   }
   const user = session.user;
 
-  const { data: profile, error } = await supabaseClient
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+ const { data: profile, error } = await supabaseClient
+  .from("profiles")
+  .select("*")
+  .eq("id", user.id)
+  .single();
+
+console.log("USER:", user);
+console.log("PROFILE:", profile);
+console.log("ERROR:", error);
+console.log("is_admin:", profile?.is_admin);
 
   if (error) {
     console.error("Could not load profile:", error.message);
