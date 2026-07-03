@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Atlas AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/atlas.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="brand">
+    <img src="/img/atlas-mark.png" alt="Atlas AI">
+    ATLAS AI
+  </div>
+  <div class="nav-links">
+    <span id="userEmail"></span>
+    <a href="#" id="logoutLink">Log out</a>
+  </div>
+</nav>
+
+<div class="wrap" id="app" style="display:none;">
+
+  <div class="dash-header">
+    <h1>Your dashboard</h1>
+    <p>Track your uploads, reports, and training progress.</p>
+  </div>
+
+  <!-- Shown only if subscription is NOT active -->
+  <div class="upgrade-banner" id="upgradeBanner" style="display:none;">
+    <div>
+      <h3>You're not on the beta plan yet</h3>
+      <p>Unlock unlimited video analysis, workouts, and monthly reports — $15/mo, locked in for life.</p>
+    </div>
+    <a class="btn btn-primary" id="upgradeBtn" href="#" target="_blank" rel="noopener">Upgrade — $15/mo</a>
+  </div>
+
+  <div class="grid">
+    <div class="stat-card">
+      <div class="label">Plan status</div>
+      <div class="value"><span id="planPill" class="pill">—</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Videos analyzed</div>
+      <div class="value accent" id="videoCount">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Latest report</div>
+      <div class="value" id="latestReport" style="font-size:18px;">None yet</div>
+    </div>
+  </div>
+
+  <div class="upload-zone" id="uploadZone">
+    <p style="margin:0 0 16px; font-family:'Archivo Black'; color:#fff; font-size:18px;">Upload a video for analysis</p>
+    <input type="file" id="fileInput" accept="video/*" style="display:none;">
+    <button class="btn btn-ghost" id="uploadBtn">Choose video file</button>
+    <p style="margin-top:14px; font-size:13px;">MP4 or MOV. We'll process it and add a report here.</p>
+  </div>
+
+  <div class="list" id="videoList"></div>
+
+</div>
+
+<div class="center-note" id="loadingNote">Loading your dashboard…</div>
+
+<script src="/js/supabaseClient.js"></script>
+<script src="/js/auth-guard.js"></script>
+<script>
+(async () => {
+  const result = await requireAuth();
+  if (!result) return; // requireAuth already redirected to /login.html
+
+  const { user, profile } = result;
+
+  document.getElementById('loadingNote').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('userEmail').textContent = user.email;
+
+  const isActive = profile && profile.subscription_status === 'active';
+
+  const planPill = document.getElementById('planPill');
+  if (isActive) {
+    planPill.textContent = 'Active — $15/mo';
+    planPill.classList.add('active');
+  } else {
+    planPill.textContent = 'Not subscribed';
+    planPill.classList.add('inactive');
+    document.getElementById('upgradeBanner').style.display = 'flex';
+  }
+
+  document.getElementById('upgradeBtn').href = ATLAS_CONFIG.STRIPE_PAYMENT_LINK;
+
+  // Gate the upload zone
+  const uploadZone = document.getElementById('uploadZone');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const fileInput = document.getElementById('fileInput');
+
+  if (!isActive) {
+    uploadZone.classList.add('disabled');
+    uploadBtn.textContent = 'Upgrade to upload';
+    uploadBtn.onclick = () => window.open(ATLAS_CONFIG.STRIPE_PAYMENT_LINK, '_blank');
+  } else {
+    uploadBtn.onclick = () => fileInput.click();
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      uploadBtn.disabled = true;
+      uploadBtn.innerHTML = '<span class="spinner"></span> Uploading...';
+
+      const path = `${user.id}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabaseClient
+        .storage.from('videos')
+        .upload(path, file);
+
+      if (uploadError) {
+        alert('Upload failed: ' + uploadError.message);
+      } else {
+        await supabaseClient.from('videos').insert({
+          user_id: user.id,
+          file_path: path,
+          status: 'pending'
+        });
+        await loadVideos();
+      }
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = 'Choose video file';
+      fileInput.value = '';
+    });
+  }
+
+  async function loadVideos() {
+    const { data: videos } = await supabaseClient
+      .from('videos')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    document.getElementById('videoCount').textContent = (videos || []).length;
+
+    const list = document.getElementById('videoList');
+    list.innerHTML = '';
+    (videos || []).forEach(v => {
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      row.innerHTML = `
+        <div>
+          <div class="name">${v.file_path.split('/').pop()}</div>
+          <div class="meta">${new Date(v.created_at).toLocaleString()}</div>
+        </div>
+        <span class="pill ${v.status === 'processed' ? 'active' : 'inactive'}">${v.status}</span>
+      `;
+      list.appendChild(row);
+    });
+
+    const latest = (videos || []).find(v => v.status === 'processed');
+    if (latest) document.getElementById('latestReport').textContent = new Date(latest.created_at).toLocaleDateString();
+  }
+
+  await loadVideos();
+
+  document.getElementById('logoutLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    signOut();
+  });
+})();
+</script>
+
+</body>
+</html>

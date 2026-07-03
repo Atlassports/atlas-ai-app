@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In — Atlas AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/atlas.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="brand">
+    <img src="/img/atlas-mark.png" alt="Atlas AI">
+    ATLAS AI
+  </div>
+  <div class="nav-links">
+    <a href="/index.html">Home</a>
+  </div>
+</nav>
+
+<div class="auth-shell">
+  <div class="auth-card card">
+    <h1>Welcome back</h1>
+    <p class="sub">Log in to your Atlas AI dashboard.</p>
+
+    <div id="msg" class="form-msg"></div>
+
+    <form id="loginForm">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" required autocomplete="current-password" placeholder="Your password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Log in</button>
+    </form>
+
+    <p class="switch-line">New to Atlas? <a href="/signup.html">Create an account</a></p>
+  </div>
+</div>
+
+<script src="/js/supabaseClient.js"></script>
+<script>
+const form = document.getElementById('loginForm');
+const msg = document.getElementById('msg');
+const btn = document.getElementById('submitBtn');
+
+function showMsg(text, type) {
+  msg.textContent = text;
+  msg.className = `form-msg show ${type}`;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Logging in...';
+
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    showMsg(error.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Log in';
+    return;
+  }
+
+  window.location.href = '/dashboard.html';
+});
+
+// If already logged in, skip straight to dashboard
+supabaseClient.auth.getSession().then(({ data: { session } }) => {
+  if (session) window.location.href = '/dashboard.html';
+});
+</script>
+
+</body>
+</html>

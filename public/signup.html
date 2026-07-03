@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up — Atlas AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/atlas.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="brand">
+    <img src="/img/atlas-mark.png" alt="Atlas AI">
+    ATLAS AI
+  </div>
+  <div class="nav-links">
+    <a href="/index.html">Home</a>
+  </div>
+</nav>
+
+<div class="auth-shell">
+  <div class="auth-card card">
+    <h1>Create your account</h1>
+    <p class="sub">Founding-member access. $15/mo, locked in for life.</p>
+
+    <div id="msg" class="form-msg"></div>
+
+    <form id="signupForm">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" required autocomplete="new-password" minlength="6" placeholder="At least 6 characters">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Create account</button>
+    </form>
+
+    <p class="switch-line">Already have an account? <a href="/login.html">Log in</a></p>
+  </div>
+</div>
+
+<script src="/js/supabaseClient.js"></script>
+<script>
+const form = document.getElementById('signupForm');
+const msg = document.getElementById('msg');
+const btn = document.getElementById('submitBtn');
+
+function showMsg(text, type) {
+  msg.textContent = text;
+  msg.className = `form-msg show ${type}`;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Creating account...';
+
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+
+  if (error) {
+    showMsg(error.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Create account';
+    return;
+  }
+
+  // If email confirmation is ON in Supabase, there's no session yet.
+  if (!data.session) {
+    showMsg("Account created — check your email to confirm, then log in.", 'ok');
+    btn.textContent = 'Check your email';
+    return;
+  }
+
+  window.location.href = '/dashboard.html';
+});
+</script>
+
+</body>
+</html>
