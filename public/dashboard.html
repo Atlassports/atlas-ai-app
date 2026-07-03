@@ -145,13 +145,31 @@
     (videos || []).forEach(v => {
       const row = document.createElement('div');
       row.className = 'list-row';
+
+      const reportBtnHtml = (v.status === 'processed' && v.report_url)
+        ? `<button class="btn btn-ghost" style="padding:8px 16px; font-size:13px;" data-report="${v.report_url}">Download report</button>`
+        : `<span class="pill inactive">${v.status}</span>`;
+
       row.innerHTML = `
         <div>
           <div class="name">${v.file_path.split('/').pop()}</div>
           <div class="meta">${new Date(v.created_at).toLocaleString()}</div>
         </div>
-        <span class="pill ${v.status === 'processed' ? 'active' : 'inactive'}">${v.status}</span>
+        ${reportBtnHtml}
       `;
+
+      const reportBtn = row.querySelector('[data-report]');
+      if (reportBtn) {
+        reportBtn.addEventListener('click', async () => {
+          const path = reportBtn.getAttribute('data-report');
+          const { data, error } = await supabaseClient
+            .storage.from('reports')
+            .createSignedUrl(path, 60 * 10);
+          if (error) return alert('Could not open report: ' + error.message);
+          window.open(data.signedUrl, '_blank');
+        });
+      }
+
       list.appendChild(row);
     });
 
