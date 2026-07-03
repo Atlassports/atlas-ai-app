@@ -71,6 +71,10 @@
   const result = await requireAuth();
   if (!result) return;
   const { user, profile } = result;
+console.log("USER:", user);
+console.log("PROFILE:", profile);
+console.log("PROFILE is_admin:", profile?.is_admin);
+console.log("PROFILE ERROR CHECK:", profile);
 
   document.getElementById('loadingNote').style.display = 'none';
 
