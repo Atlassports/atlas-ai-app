@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Atlas AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/atlas.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  .player-card {
+    background: var(--card);
+    border: 1.5px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    margin-bottom: 14px;
+  }
+  .player-top {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+  }
+  .player-email { font-weight: 700; font-size: 17px; }
+  .player-meta { color: var(--mute); font-size: 13px; margin-top: 4px; }
+  .video-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: #0a0912; border-radius: 10px;
+    margin-top: 12px; gap: 16px; flex-wrap: wrap;
+  }
+  .video-row .name { font-weight: 600; font-size: 14px; }
+  .video-row .meta { color: var(--mute); font-size: 12px; }
+  .video-actions { display: flex; gap: 10px; align-items: center; }
+  .btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+  .videos-panel { display: none; margin-top: 6px; }
+  .videos-panel.open { display: block; }
+  .empty-note { color: var(--mute); font-size: 13px; padding: 10px 0; }
+  input[type="file"].report-input { display: none; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="brand">
+    <img src="/img/atlas-mark.png" alt="Atlas AI">
+    ATLAS AI <span style="color:var(--mute); font-size:14px; letter-spacing:0;">/ admin</span>
+  </div>
+  <div class="nav-links">
+    <a href="/dashboard.html">My dashboard</a>
+    <a href="#" id="logoutLink">Log out</a>
+  </div>
+</nav>
+
+<div class="wrap" id="app" style="display:none;">
+  <div class="dash-header">
+    <h1>Players</h1>
+    <p>See who's signed up, review their uploads, and attach reports.</p>
+  </div>
+  <div id="playerList" style="margin-top:24px;"></div>
+</div>
+
+<div class="center-note" id="loadingNote">Loading…</div>
+<div class="center-note" id="deniedNote" style="display:none;">
+  You don't have admin access on this account.<br><br>
+  <a href="/dashboard.html" class="btn btn-ghost">Back to my dashboard</a>
+</div>
+
+<script src="/js/supabaseClient.js"></script>
+<script src="/js/auth-guard.js"></script>
+<script>
+(async () => {
+  const result = await requireAuth();
+  if (!result) return;
+  const { user, profile } = result;
+
+  document.getElementById('loadingNote').style.display = 'none';
+
+  if (!profile || !profile.is_admin) {
+    document.getElementById('deniedNote').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('app').style.display = 'block';
+
+  const { data: profiles, error: pErr } = await supabaseClient
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (pErr) {
+    document.getElementById('playerList').innerHTML =
+      `<p class="empty-note">Couldn't load players: ${pErr.message}</p>`;
+    return;
+  }
+
+  const { data: allVideos } = await supabaseClient
+    .from('videos')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  const videosByUser = {};
+  (allVideos || []).forEach(v => {
+    (videosByUser[v.user_id] = videosByUser[v.user_id] || []).push(v);
+  });
+
+  const list = document.getElementById('playerList');
+
+  profiles.forEach(p => {
+    const vids = videosByUser[p.id] || [];
+    const pendingCount = vids.filter(v => v.status !== 'processed').length;
+
+    const card = document.createElement('div');
+    card.className = 'player-card';
+    card.innerHTML = `
+      <div class="player-top">
+        <div>
+          <div class="player-email">${p.email || '(no email on file)'}</div>
+          <div class="player-meta">
+            <span class="pill ${p.subscription_status === 'active' ? 'active' : 'inactive'}">${p.subscription_status || 'inactive'}</span>
+            &nbsp;·&nbsp; ${vids.length} video${vids.length === 1 ? '' : 's'}
+            ${pendingCount ? ` · <span style="color:var(--purple-hi);">${pendingCount} awaiting report</span>` : ''}
+          </div>
+        </div>
+        <span style="color:var(--mute); font-size:20px;">▾</span>
+      </div>
+      <div class="videos-panel"></div>
+    `;
+
+    const panel = card.querySelector('.videos-panel');
+    if (vids.length === 0) {
+      panel.innerHTML = `<p class="empty-note">No uploads yet.</p>`;
+    } else {
+      vids.forEach(v => {
+        const row = document.createElement('div');
+        row.className = 'video-row';
+        const fileName = v.file_path.split('/').pop();
+        row.innerHTML = `
+          <div>
+            <div class="name">${fileName}</div>
+            <div class="meta">${new Date(v.created_at).toLocaleString()} · <span class="pill ${v.status === 'processed' ? 'active' : 'inactive'}">${v.status}</span></div>
+          </div>
+          <div class="video-actions">
+            <button class="btn btn-ghost btn-sm" data-action="watch">View video</button>
+            ${v.status === 'processed'
+              ? `<button class="btn btn-ghost btn-sm" data-action="viewreport">View report</button>`
+              : `<button class="btn btn-primary btn-sm" data-action="upload">Upload report</button>
+                 <input type="file" class="report-input" accept="application/pdf">`
+            }
+          </div>
+        `;
+
+        row.querySelector('[data-action="watch"]').addEventListener('click', async () => {
+          const { data, error } = await supabaseClient
+            .storage.from('videos')
+            .createSignedUrl(v.file_path, 60 * 10);
+          if (error) return alert('Could not open video: ' + error.message);
+          window.open(data.signedUrl, '_blank');
+        });
+
+        const viewReportBtn = row.querySelector('[data-action="viewreport"]');
+        if (viewReportBtn) {
+          viewReportBtn.addEventListener('click', async () => {
+            const { data, error } = await supabaseClient
+              .storage.from('reports')
+              .createSignedUrl(v.report_url, 60 * 10);
+            if (error) return alert('Could not open report: ' + error.message);
+            window.open(data.signedUrl, '_blank');
+          });
+        }
+
+        const uploadBtn = row.querySelector('[data-action="upload"]');
+        const fileInput = row.querySelector('.report-input');
+        if (uploadBtn) {
+          uploadBtn.addEventListener('click', () => fileInput.click());
+          fileInput.addEventListener('change', async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<span class="spinner"></span>';
+
+            const reportPath = `${p.id}/${v.id}_report.pdf`;
+            const { error: upErr } = await supabaseClient
+              .storage.from('reports')
+              .upload(reportPath, file, { upsert: true });
+
+            if (upErr) {
+              alert('Upload failed: ' + upErr.message);
+              uploadBtn.disabled = false;
+              uploadBtn.textContent = 'Upload report';
+              return;
+            }
+
+            const { error: updErr } = await supabaseClient
+              .from('videos')
+              .update({ report_url: reportPath, status: 'processed' })
+              .eq('id', v.id);
+
+            if (updErr) {
+              alert('Report uploaded, but marking it complete failed: ' + updErr.message);
+            } else {
+              location.reload();
+            }
+          });
+        }
+
+        panel.appendChild(row);
+      });
+    }
+
+    card.querySelector('.player-top').addEventListener('click', () => {
+      panel.classList.toggle('open');
+    });
+
+    list.appendChild(card);
+  });
+
+  document.getElementById('logoutLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    signOut();
+  });
+})();
+</script>
+
+</body>
+</html>
