@@ -7,8 +7,8 @@
 // ========================================================
 
 const ATLAS_CONFIG = {
-  SUPABASE_URL: "https://YOUR-PROJECT-REF.supabase.co",
-  SUPABASE_ANON_KEY: "YOUR-ANON-PUBLIC-KEY",
+  SUPABASE_URL: "https://gkkkcyeoffcedxhrncwr.supabase.co/rest/v1/",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdra2tjeWVvZmZjZWR4aHJuY3dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNjk3MDIsImV4cCI6MjA5ODY0NTcwMn0.Cw6qhvs6W6iA4UrBfHQnbl-avWsxGJXLS_7pAGe4nKg",
   STRIPE_PAYMENT_LINK: "https://buy.stripe.com/4gM7sNfr5gisemh83Eawo00"
 };
 
