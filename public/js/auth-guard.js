@@ -18,16 +18,18 @@ async function requireAuth() {
   .eq("id", user.id)
   .single();
 
-console.log("USER:", user);
-console.log("PROFILE:", profile);
-console.log("ERROR:", error);
-console.log("is_admin:", profile?.is_admin);
+console.log("User ID:", user.id);
+console.log("Profile:", profile);
+console.log("Error object:", error);
 
-  if (error) {
-    console.error("Could not load profile:", error.message);
-  }
+if (error) {
+  alert(
+    `Profile fetch failed:\n\n` +
+    JSON.stringify(error, null, 2)
+  );
+}
 
-  return { user, profile };
+return { user, profile };
 }
 
 async function signOut() {
