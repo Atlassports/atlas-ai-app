@@ -38,6 +38,17 @@
     <a class="btn btn-primary" id="upgradeBtn" href="#" target="_blank" rel="noopener">Upgrade — $15/mo</a>
   </div>
 
+  <div class="card" id="redeemBox" style="margin-top:16px; padding:24px; display:none;">
+    <p style="margin:0 0 14px; font-size:15px; color:var(--mute);">Have a free access code?</p>
+    <div style="display:flex; gap:10px;">
+      <input type="text" id="redeemInput" placeholder="ENTER CODE"
+        style="flex:1; background:#0a0912; border:1.5px solid rgba(139,92,246,0.22); border-radius:10px;
+               padding:13px 14px; color:#fff; font-family:'Barlow'; font-size:15px; text-transform:uppercase; outline:none;">
+      <button class="btn btn-ghost" id="redeemBtn" style="padding:13px 24px;">Redeem</button>
+    </div>
+    <p id="redeemMsg" style="margin:10px 0 0; font-size:14px; display:none;"></p>
+  </div>
+
   <div class="grid">
     <div class="stat-card">
       <div class="label">Plan status</div>
@@ -93,6 +104,42 @@
 
   document.getElementById('upgradeBtn').href = ATLAS_CONFIG.STRIPE_PAYMENT_LINK;
 
+  if (!isActive) {
+    document.getElementById('redeemBox').style.display = 'block';
+  }
+
+  document.getElementById('redeemBtn').addEventListener('click', async () => {
+    const input = document.getElementById('redeemInput');
+    const msg = document.getElementById('redeemMsg');
+    const code = input.value.trim();
+    if (!code) return;
+
+    const btn = document.getElementById('redeemBtn');
+    btn.disabled = true;
+    btn.textContent = 'Checking...';
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    const resp = await fetch('/api/redeem-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, access_token: session.access_token })
+    });
+    const redeemResult = await resp.json();
+
+    msg.style.display = 'block';
+    if (resp.ok) {
+      msg.style.color = '#34D399';
+      msg.textContent = 'Code redeemed! Reloading your dashboard...';
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      msg.style.color = '#F87171';
+      msg.textContent = redeemResult.error || 'Something went wrong.';
+      btn.disabled = false;
+      btn.textContent = 'Redeem';
+    }
+  });
+  
   // Gate the upload zone
   const uploadZone = document.getElementById('uploadZone');
   const uploadBtn = document.getElementById('uploadBtn');
