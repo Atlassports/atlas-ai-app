@@ -1,12 +1,6 @@
 // ========================================================
 // Atlas AI — Redeem code endpoint
 // Deployed by Vercel as: /api/redeem-code
-//
-// Why this has to be a server function and not done directly from
-// the browser: the redeem_codes table has no public read/write access
-// (on purpose) so a player can't peek at valid codes or edit their own
-// subscription_status from browser dev tools. This function uses the
-// service_role key (server-only) to safely check + apply a code.
 // ========================================================
 
 import { createClient } from '@supabase/supabase-js';
@@ -29,11 +23,15 @@ export default async function handler(req, res) {
   // Verify the caller is who they say they are (their logged-in session token)
   const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(access_token);
   if (userErr || !userData?.user) {
-    return res.status(401).json({ error: 'Not logged in' });
+    // TEMPORARY: surfacing the real reason to make debugging easier.
+    // Remove the `detail` field once this is working.
+    return res.status(401).json({
+      error: 'Not logged in',
+      detail: userErr ? userErr.message : 'No user returned for this token'
+    });
   }
   const userId = userData.user.id;
 
-  // Has this user already redeemed a code?
   const { data: existingUse } = await supabaseAdmin
     .from('redeem_code_uses')
     .select('id')
@@ -44,7 +42,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'You\u2019ve already redeemed a code on this account.' });
   }
 
-  // Look up the code
   const cleanCode = String(code).trim().toUpperCase();
   const { data: codeRow, error: codeErr } = await supabaseAdmin
     .from('redeem_codes')
@@ -65,7 +62,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'That code has already been fully used.' });
   }
 
-  // All checks passed — apply it
   const { error: useErr } = await supabaseAdmin
     .from('redeem_code_uses')
     .insert({ code_id: codeRow.id, user_id: userId });
