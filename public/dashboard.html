@@ -232,6 +232,185 @@
   });
 })();
 </script>
+<!--
+  ATLAS CHAT — frontend block
+  ===========================
+  Paste this whole thing into dashboard.html, in the spot where you want the
+  chat to appear (see the deploy guide: right after your uploads list).
+
+  It's self-contained: styles, markup, and script all in one block. It matches
+  the approved mockup — "LATEST UPLOAD" header, fused chat panel, message
+  counter, brand colors.
+
+  ONE THING TO CHECK: the script needs your Supabase client. If dashboard.html
+  already creates one (search the file for "createClient"), this will find it
+  automatically. If your variable isn't called `supabase` or `supabaseClient`,
+  set SUPABASE_CLIENT below to whatever it is.
+-->
+
+<style>
+  .atlas-chat-wrap { max-width: 1060px; margin: 0 auto 26px; padding: 0 4px; }
+  .atlas-chat-label {
+    font-size: 11px; letter-spacing: 2px; color: #A78BFA;
+    font-weight: 700; margin-bottom: 10px;
+  }
+  .atlas-chat-panel {
+    background: #0e0c17;
+    border: 1px solid rgba(139,92,246,0.35);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .atlas-chat-head { display: flex; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .atlas-chat-title { color: #A78BFA; font-size: 11px; letter-spacing: 2px; font-weight: 700; }
+  .atlas-chat-pill {
+    background: rgba(52,211,153,0.14); color: #34D399;
+    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 5px;
+  }
+  .atlas-chat-count { margin-left: auto; color: #6E6C7C; font-size: 11px; }
+  .atlas-chat-messages {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-bottom: 14px; max-height: 340px; overflow-y: auto;
+  }
+  .atlas-msg-coach {
+    align-self: flex-start; background: #241f36; color: #E4E2EC;
+    padding: 9px 13px; border-radius: 10px; font-size: 13.5px;
+    max-width: 80%; line-height: 1.5; white-space: pre-wrap;
+  }
+  .atlas-msg-user {
+    align-self: flex-end; background: #8B5CF6; color: #fff;
+    padding: 9px 13px; border-radius: 10px; font-size: 13.5px; max-width: 80%;
+  }
+  .atlas-chat-empty { color: #6E6C7C; font-size: 13px; font-style: italic; }
+  .atlas-chat-error { color: #F87171; font-size: 12px; margin-bottom: 10px; }
+  .atlas-chat-row { display: flex; gap: 8px; }
+  .atlas-chat-input {
+    flex: 1; background: #08060e;
+    border: 1px solid rgba(139,92,246,0.3); border-radius: 8px;
+    padding: 10px 12px; color: #fff; font-size: 13.5px;
+    font-family: inherit; outline: none;
+  }
+  .atlas-chat-input::placeholder { color: #6E6C7C; }
+  .atlas-chat-input:focus { border-color: rgba(139,92,246,0.7); }
+  .atlas-chat-send {
+    background: #8B5CF6; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 20px; font-size: 13.5px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }
+  .atlas-chat-send:disabled { opacity: 0.5; cursor: default; }
+</style>
+
+<div class="atlas-chat-wrap">
+  <div class="atlas-chat-label">ASK YOUR COACH</div>
+  <div class="atlas-chat-panel">
+    <div class="atlas-chat-head">
+      <span class="atlas-chat-title">ATLAS CHAT</span>
+      <span class="atlas-chat-pill">Knows your latest report</span>
+      <span class="atlas-chat-count" id="atlasChatCount"></span>
+    </div>
+
+    <div class="atlas-chat-messages" id="atlasChatMessages">
+      <div class="atlas-chat-empty" id="atlasChatEmpty">
+        Ask anything about your last clip — what to fix, what drills to run, why a score is what it is.
+      </div>
+    </div>
+
+    <div class="atlas-chat-error" id="atlasChatError" style="display:none;"></div>
+
+    <div class="atlas-chat-row">
+      <input class="atlas-chat-input" id="atlasChatInput" placeholder="Ask about your skating…" />
+      <button class="atlas-chat-send" id="atlasChatSend">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // EDIT-ME if your Supabase client variable has a different name:
+  var SUPABASE_CLIENT = window.supabase || window.supabaseClient || window._supabase;
+
+  var messagesEl = document.getElementById('atlasChatMessages');
+  var emptyEl    = document.getElementById('atlasChatEmpty');
+  var errorEl    = document.getElementById('atlasChatError');
+  var inputEl    = document.getElementById('atlasChatInput');
+  var sendEl     = document.getElementById('atlasChatSend');
+  var countEl    = document.getElementById('atlasChatCount');
+
+  function addBubble(text, who) {
+    if (emptyEl) { emptyEl.style.display = 'none'; }
+    var div = document.createElement('div');
+    div.className = who === 'user' ? 'atlas-msg-user' : 'atlas-msg-coach';
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
+
+  async function send() {
+    var text = inputEl.value.trim();
+    if (!text) return;
+
+    errorEl.style.display = 'none';
+    addBubble(text, 'user');
+    inputEl.value = '';
+    sendEl.disabled = true;
+
+    var thinking = addBubble('Thinking…', 'coach');
+
+    try {
+      if (!SUPABASE_CLIENT) {
+        throw new Error('Supabase client not found on the page.');
+      }
+
+      var sessionResult = await SUPABASE_CLIENT.auth.getSession();
+      var token = sessionResult &&
+                  sessionResult.data &&
+                  sessionResult.data.session &&
+                  sessionResult.data.session.access_token;
+
+      if (!token) {
+        thinking.remove();
+        showError('You need to be logged in to use Atlas Chat.');
+        sendEl.disabled = false;
+        return;
+      }
+
+      var res = await fetch('/api/atlas-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: token, message: text })
+      });
+
+      var data = await res.json();
+      thinking.remove();
+
+      if (!res.ok) {
+        showError(data.error || 'Something went wrong.');
+      } else {
+        addBubble(data.reply, 'coach');
+        if (typeof data.remaining === 'number') {
+          countEl.textContent = data.remaining + ' messages left today';
+        }
+      }
+    } catch (e) {
+      thinking.remove();
+      showError('Connection problem — try again.');
+      console.error(e);
+    } finally {
+      sendEl.disabled = false;
+    }
+  }
+
+  sendEl.addEventListener('click', send);
+  inputEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') send();
+  });
+})();
+</script>
 
 </body>
 </html>
