@@ -339,6 +339,45 @@
     });
   }
 
+ // ===================================================================
+// DASHBOARD PATCH — lets players watch the annotated analysis clip
+// ===================================================================
+//
+// In public/dashboard.html, find the line that starts:
+//     async function loadVideos() {
+//
+// Delete that ENTIRE function (from "async function loadVideos() {" down to
+// its closing "}" — it ends right before the line "await loadVideos();")
+// and paste this in its place.
+//
+// What changed:
+//   - Buttons now open in a tab that's created on click, so the browser
+//     doesn't block them as popups (this was breaking downloads).
+//   - Adds a "Watch analysis" button when you've attached an annotated clip.
+
+  async function openStorageFile(bucket, path) {
+    const win = window.open('', '_blank');
+    try {
+      const { data, error } = await supabaseClient
+        .storage.from(bucket)
+        .createSignedUrl(path, 60 * 10);
+
+      if (error || !data) {
+        if (win) win.close();
+        alert('Could not open file: ' + (error ? error.message : 'not found'));
+        return;
+      }
+      if (win) {
+        win.location.href = data.signedUrl;
+      } else {
+        window.location.href = data.signedUrl;
+      }
+    } catch (e) {
+      if (win) win.close();
+      alert('Could not open file: ' + e.message);
+    }
+  }
+
   async function loadVideos() {
     const { data: videos } = await supabaseClient
       .from('videos')
@@ -350,12 +389,18 @@
 
     const list = document.getElementById('videoList');
     list.innerHTML = '';
+
     (videos || []).forEach(v => {
       const row = document.createElement('div');
       row.className = 'list-row';
 
-      const reportBtnHtml = (v.status === 'processed' && v.report_url)
-        ? `<button class="btn btn-ghost" style="padding:8px 16px; font-size:13px;" data-report="${v.report_url}">Download report</button>`
+      const isReady = v.status === 'processed' && v.report_url;
+
+      const buttons = isReady
+        ? `${v.annotated_url
+              ? `<button class="btn btn-ghost" style="padding:8px 16px; font-size:13px;" data-clip="${v.annotated_url}">Watch analysis</button>`
+              : ''}
+           <button class="btn btn-ghost" style="padding:8px 16px; font-size:13px;" data-report="${v.report_url}">Download report</button>`
         : `<span class="pill inactive">${v.status}</span>`;
 
       row.innerHTML = `
@@ -363,18 +408,22 @@
           <div class="name">${v.file_path.split('/').pop()}</div>
           <div class="meta">${new Date(v.created_at).toLocaleString()}</div>
         </div>
-        ${reportBtnHtml}
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          ${buttons}
+        </div>
       `;
 
       const reportBtn = row.querySelector('[data-report]');
       if (reportBtn) {
-        reportBtn.addEventListener('click', async () => {
-          const path = reportBtn.getAttribute('data-report');
-          const { data, error } = await supabaseClient
-            .storage.from('reports')
-            .createSignedUrl(path, 60 * 10);
-          if (error) return alert('Could not open report: ' + error.message);
-          window.open(data.signedUrl, '_blank');
+        reportBtn.addEventListener('click', () => {
+          openStorageFile('reports', reportBtn.getAttribute('data-report'));
+        });
+      }
+
+      const clipBtn = row.querySelector('[data-clip]');
+      if (clipBtn) {
+        clipBtn.addEventListener('click', () => {
+          openStorageFile('reports', clipBtn.getAttribute('data-clip'));
         });
       }
 
@@ -382,9 +431,12 @@
     });
 
     const latest = (videos || []).find(v => v.status === 'processed');
-    if (latest) document.getElementById('latestReport').textContent = new Date(latest.created_at).toLocaleDateString();
+    if (latest) {
+      document.getElementById('latestReport').textContent =
+        new Date(latest.created_at).toLocaleDateString();
+    }
   }
-
+  
   await loadVideos();
 
   document.getElementById('logoutLink').addEventListener('click', (e) => {
