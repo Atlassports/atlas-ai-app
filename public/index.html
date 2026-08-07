@@ -36,7 +36,6 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* atmospheric background */
   body::before {
     content: '';
     position: fixed;
@@ -48,7 +47,6 @@
     z-index: -2;
   }
 
-  /* faint rink lines */
   body::after {
     content: '';
     position: fixed;
@@ -75,15 +73,6 @@
     display: flex; align-items: center; justify-content: space-between;
   }
   .brand { display: flex; align-items: center; gap: 11px; }
-  .mark {
-    width: 38px; height: 38px; position: relative;
-    display: grid; place-items: center;
-    background: linear-gradient(145deg, var(--ice) 0%, #6D28D9 100%);
-    border-radius: 10px;
-    box-shadow: 0 0 24px var(--glow);
-    font-family: 'Archivo Black', sans-serif; font-weight: 900; font-size: 22px;
-    color: var(--ink); transform: rotate(-4deg);
-  }
   .brand-name {
     font-family: 'Archivo Black', sans-serif; font-weight: 800;
     font-size: 21px; letter-spacing: -0.01em;
@@ -91,12 +80,13 @@
   .brand-name span { color: var(--ice); }
   .nav-cta {
     font-family: 'Barlow', sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.08em; font-size: 14px;
-    color: var(--ink); background: var(--ice-bright);
-    border: none; padding: 11px 20px; border-radius: 8px;
+    text-transform: uppercase; letter-spacing: 0.08em; font-size: 13px;
+    color: var(--ink); background: var(--rink);
+    border: none; padding: 11px 18px; border-radius: 8px;
     cursor: pointer; text-decoration: none; transition: all 0.2s;
+    white-space: nowrap;
   }
-  .nav-cta:hover { background: var(--white); box-shadow: 0 0 28px var(--glow); }
+  .nav-cta:hover { background: var(--white); box-shadow: 0 0 28px rgba(52,211,153,0.4); }
 
   /* ---------- HERO ---------- */
   .hero { padding: 96px 0 72px; position: relative; }
@@ -130,7 +120,7 @@
   }
   .hero-sub {
     font-size: 19px; color: var(--muted); max-width: 52ch;
-    margin-bottom: 38px; line-height: 1.55;
+    margin-bottom: 34px; line-height: 1.55;
   }
   .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
   .btn-primary {
@@ -150,73 +140,12 @@
     cursor: pointer; text-decoration: none; transition: all 0.2s;
   }
   .btn-ghost:hover { border-color: var(--ice); background: rgba(139,92,246,0.08); }
-  .price-tag {
-    font-family: 'Barlow', sans-serif; font-size: 13px;
-    color: var(--muted); margin-left: 4px;
-  }
-  .price-tag b { color: var(--white); }
 
-  /* ---------- HERO DASHBOARD MOCKUP ---------- */
-  .hero-demo {
-    margin-top: 64px;
-    border: 1px solid var(--line); border-radius: 18px;
-    background: linear-gradient(160deg, rgba(23,19,31,0.75), rgba(10,27,48,0.4));
-    box-shadow: 0 40px 90px -40px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.04);
-    overflow: hidden;
+  .trial-line {
+    margin-top: 18px; font-size: 13.5px; color: var(--muted);
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
   }
-  .demo-bar {
-    display: flex; align-items: center; gap: 8px;
-    padding: 14px 18px; border-bottom: 1px solid var(--line);
-    background: rgba(5,5,7,0.55);
-  }
-  .dot { width: 11px; height: 11px; border-radius: 50%; }
-  .demo-label {
-    margin-left: 12px; font-family: 'Barlow', sans-serif;
-    font-size: 12px; color: var(--muted);
-  }
-  .demo-grid {
-    display: grid; grid-template-columns: 1.1fr 1fr; gap: 1px;
-    background: var(--line);
-  }
-  @media (max-width: 760px){ .demo-grid { grid-template-columns: 1fr; } }
-  .demo-cell { background: var(--ink-2); padding: 26px; }
-  .cell-head {
-    display: flex; justify-content: space-between; align-items: baseline;
-    margin-bottom: 20px;
-  }
-  .cell-title {
-    font-family: 'Barlow', sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.1em; font-size: 13px;
-    color: var(--ice-pale);
-  }
-  .cell-score {
-    font-family: 'Archivo Black', sans-serif; font-weight: 800; font-size: 15px;
-    color: var(--rink);
-  }
-
-  /* metric bars */
-  .metric { margin-bottom: 16px; }
-  .metric:last-child { margin-bottom: 0; }
-  .metric-row {
-    display: flex; justify-content: space-between;
-    font-size: 13px; margin-bottom: 7px;
-  }
-  .metric-name { color: var(--white); font-weight: 500; }
-  .metric-val { font-family: 'Barlow', sans-serif; color: var(--ice-bright); font-weight: 600; }
-  .bar-track {
-    height: 7px; border-radius: 100px;
-    background: rgba(139,92,246,0.1); overflow: hidden;
-  }
-  .bar-fill {
-    height: 100%; border-radius: 100px;
-    background: linear-gradient(90deg, var(--ice), var(--ice-bright));
-    transform-origin: left; animation: grow 1.3s cubic-bezier(.2,.8,.2,1) forwards;
-    transform: scaleX(0);
-  }
-  .bar-fill.green { background: linear-gradient(90deg, var(--rink-deep), var(--rink)); }
-  @keyframes grow { to { transform: scaleX(1); } }
-
-  .radar-wrap { display: grid; place-items: center; padding-top: 4px; }
+  .trial-line b { color: var(--white); font-weight: 600; }
 
   /* ---------- SECTION SHELL ---------- */
   section { position: relative; }
@@ -254,8 +183,105 @@
   }
   .feat p { font-size: 14.5px; color: var(--muted); }
 
+  /* ---------- SHOWCASE (chat + overlay) ---------- */
+  .showcase { padding: 20px 0 100px; }
+  .showcase-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  }
+  @media (max-width: 900px){ .showcase-grid { grid-template-columns: 1fr; } }
+  .show-card {
+    border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
+    background: linear-gradient(160deg, rgba(23,19,31,0.65), rgba(10,27,48,0.3));
+    box-shadow: 0 30px 70px -50px rgba(0,0,0,0.8);
+    display: flex; flex-direction: column;
+  }
+  .show-top { padding: 26px 28px 20px; }
+  .show-tag {
+    display: inline-block;
+    font-family: 'Barlow', sans-serif; font-size: 10.5px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--rink);
+    border: 1px solid rgba(52,211,153,0.3); border-radius: 100px;
+    padding: 4px 11px; margin-bottom: 14px;
+  }
+  .show-top h3 {
+    font-family: 'Archivo Black', sans-serif; font-weight: 800; font-size: 23px;
+    letter-spacing: -0.01em; margin-bottom: 9px;
+  }
+  .show-top p { font-size: 14.5px; color: var(--muted); }
+  .show-body { padding: 0 28px 28px; margin-top: auto; }
+
+  /* chat bubbles */
+  .chat-box {
+    background: #0a0912; border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px;
+  }
+  .cbubble-coach, .cbubble-you {
+    padding: 10px 14px; border-radius: 11px; font-size: 13.5px;
+    line-height: 1.5; margin-bottom: 9px; max-width: 88%;
+  }
+  .cbubble-coach { background: #241f36; color: #E4E2EC; }
+  .cbubble-you { background: var(--ice); color: #fff; margin-left: auto; }
+  .chat-input-fake {
+    display: flex; gap: 8px; margin-top: 14px;
+  }
+  .chat-input-fake .fld {
+    flex: 1; background: #08060e; border: 1px solid rgba(139,92,246,0.3);
+    border-radius: 8px; padding: 9px 12px; color: #6E6C7C; font-size: 13px;
+  }
+  .chat-input-fake .snd {
+    background: var(--ice); color: #fff; border-radius: 8px;
+    padding: 9px 18px; font-size: 13px; font-weight: 700;
+  }
+
+  /* overlay video mock */
+  .overlay-mock {
+    background: #0a0912; border: 1px solid var(--line);
+    border-radius: 14px; overflow: hidden; position: relative;
+  }
+  .overlay-caption {
+    display: flex; align-items: center; gap: 9px;
+    padding: 12px 16px; border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--muted);
+  }
+  .vid-frame {
+    position: relative; aspect-ratio: 16 / 10;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 40%, rgba(139,92,246,0.14), transparent 70%),
+      linear-gradient(170deg, #14111f, #0a0912);
+    display: grid; place-items: center;
+  }
+  .vid-play {
+    width: 62px; height: 62px; border-radius: 50%;
+    display: grid; place-items: center; color: var(--ink);
+    background: var(--rink);
+    box-shadow: 0 8px 30px rgba(52,211,153,0.35);
+  }
+  .vid-badge {
+    position: absolute; top: 14px; left: 14px;
+    font-family:'Barlow', sans-serif; font-size: 10.5px; color: var(--muted);
+    background: rgba(5,5,7,0.7); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 10px;
+  }
+  .vid-controls { position: absolute; left: 16px; right: 16px; bottom: 14px; }
+  .vid-scrub {
+    height: 4px; border-radius: 100px; background: rgba(139,92,246,0.18);
+    overflow: hidden;
+  }
+  .vid-scrub span {
+    display: block; height: 100%; width: 38%; border-radius: 100px;
+    background: linear-gradient(90deg, var(--rink-deep), var(--rink));
+  }
+  .vid-times {
+    display: flex; justify-content: space-between; margin-top: 7px;
+    font-family:'Barlow', sans-serif; font-size: 10px; color: var(--muted);
+  }
+  .rec-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--rink);
+    box-shadow: 0 0 8px var(--rink); animation: pulse 2s infinite;
+  }
+
   /* ---------- SAMPLE REPORT ---------- */
-  .report { padding: 100px 0; }
+  .report { padding: 40px 0 100px; }
   .report-panel {
     border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
     background: linear-gradient(160deg, rgba(23,19,31,0.65), rgba(10,27,48,0.3));
@@ -302,7 +328,6 @@
   .drill b { color: var(--white); font-weight: 600; }
   .check { color: var(--rink); flex-shrink: 0; margin-top: 2px; }
 
-  /* charts row */
   .report-charts {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
     background: var(--line); border-top: 1px solid var(--line);
@@ -323,7 +348,6 @@
   .lg i { width: 11px; height: 3px; border-radius: 2px; display: inline-block; }
   .donut-center { font-family:'Archivo Black', sans-serif; font-weight: 800; }
 
-  /* tabs */
   .tabs {
     display: inline-flex; gap: 4px; padding: 5px;
     border: 1px solid var(--line); border-radius: 12px;
@@ -347,7 +371,6 @@
   .tab-panel.active { display: block; animation: fadeIn 0.4s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-  /* "continues" strip — shows report is partial */
   .continues {
     position: relative; border-top: 1px solid var(--line);
     background: var(--ink-2); padding: 0;
@@ -371,7 +394,7 @@
     padding: 20px; border-top: 1px solid var(--line);
     background: rgba(5,5,7,0.55);
     font-family:'Barlow', sans-serif; font-size: 12.5px; color: var(--ice-pale);
-    letter-spacing: 0.04em;
+    letter-spacing: 0.04em; flex-wrap: wrap; text-align: center;
   }
   .continues-label b { color: var(--white); }
   .pages-pill {
@@ -409,10 +432,8 @@
   .soon-cell h6 { font-family:'Archivo Black', sans-serif; font-weight: 700; font-size: 17px; margin-bottom: 7px; }
   .soon-cell .cap { font-size: 13.5px; color: var(--muted); margin-bottom: 18px; }
 
-  /* progress mini chart */
   .progress-svg { width: 100%; }
 
-  /* drill chips */
   .drill-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip {
     font-size: 12px; color: var(--ice-pale);
@@ -422,7 +443,6 @@
   }
   .chip .pct { font-family:'Barlow', sans-serif; color: var(--rink); font-size: 11px; }
 
-  /* events map */
   .map-mini {
     border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
     background: #0a0912; position: relative;
@@ -436,7 +456,6 @@
   .event-row .ename { color: var(--white); font-weight: 500; flex: 1; }
   .event-row .edist { font-family:'Barlow', sans-serif; font-size: 11px; color: var(--muted); }
 
-  /* phone leaderboard */
   .lb-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(139,92,246,0.07); }
   .lb-row:last-child { border-bottom: none; }
   .lb-rank { font-family:'Archivo Black', sans-serif; font-weight: 800; font-size: 14px; width: 22px; color: var(--muted); }
@@ -445,7 +464,7 @@
   .lb-score { font-family:'Barlow', sans-serif; font-size: 13px; color: var(--ice-bright); font-weight: 600; }
 
   /* ---------- PRICING ---------- */
-  .pricing { padding: 100px 0; }
+  .pricing { padding: 100px 0 120px; }
   .price-card {
     max-width: 520px; margin: 0 auto; text-align: center;
     border: 1px solid rgba(139,92,246,0.3); border-radius: 22px;
@@ -464,6 +483,13 @@
     letter-spacing: 0.16em; text-transform: uppercase; color: var(--ice);
     margin-bottom: 18px;
   }
+  .trial-flag {
+    display: inline-block;
+    font-family:'Barlow', sans-serif; font-size: 11.5px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--rink);
+    background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.35);
+    border-radius: 100px; padding: 6px 14px; margin-bottom: 20px;
+  }
   .price-big {
     font-family: 'Archivo Black', sans-serif; font-weight: 900;
     font-size: 76px; line-height: 1; letter-spacing: -0.03em;
@@ -471,128 +497,12 @@
   .price-big sup { font-size: 30px; vertical-align: super; color: var(--muted); }
   .price-per { font-family:'Barlow', sans-serif; font-size: 14px; color: var(--muted); }
   .price-unlim { font-size: 17px; color: var(--ice-pale); margin: 16px 0 30px; font-weight: 500; }
-  .price-list { list-style: none; text-align: left; margin: 0 auto 34px; max-width: 340px; }
+  .price-list { list-style: none; text-align: left; margin: 0 auto 34px; max-width: 360px; }
   .price-list li { display: flex; gap: 11px; padding: 9px 0; font-size: 14.5px; color: var(--white); }
   .price-list .check { color: var(--rink); }
-
-  /* ---------- SUBMIT ---------- */
-  .submit { padding: 30px 0 110px; }
-  .submit-card {
-    border: 1px solid var(--line); border-radius: 22px;
-    background: linear-gradient(160deg, rgba(23,19,31,0.6), rgba(10,27,48,0.3));
-    padding: 48px; max-width: 720px; margin: 0 auto;
-  }
-  .submit-card h3 {
-    font-family: 'Archivo Black', sans-serif; font-weight: 800; font-size: 28px;
-    margin-bottom: 10px; letter-spacing: -0.01em; text-align: center;
-  }
-  .submit-card .lead { text-align: center; color: var(--muted); margin-bottom: 34px; font-size: 15.5px; }
-  .step { display: flex; gap: 18px; margin-bottom: 14px; align-items: stretch; }
-  .step-num {
-    flex-shrink: 0; width: 40px; height: 40px; border-radius: 11px;
-    display: grid; place-items: center;
-    font-family: 'Archivo Black', sans-serif; font-weight: 800; font-size: 18px;
-    background: rgba(139,92,246,0.12); color: var(--ice-bright);
-    border: 1px solid var(--line);
-  }
-  .step-body { flex: 1; padding-top: 7px; }
-  .step-body b { font-weight: 600; }
-  .step-body p { font-size: 14px; color: var(--muted); margin-top: 2px; }
-
-  .submit-form-btn {
-    display: block; text-align: center; margin: 30px 0 24px;
-    font-family: 'Barlow', sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.07em; font-size: 17px;
-    color: var(--ink); background: var(--rink);
-    padding: 18px; border-radius: 12px; text-decoration: none;
-    transition: all 0.2s; box-shadow: 0 8px 30px rgba(52,211,153,0.25);
-  }
-  .submit-form-btn:hover { background: var(--rink-deep); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(52,211,153,0.4); }
-
-  .pay-box {
-    border: 1px solid var(--line); border-radius: 14px;
-    padding: 22px; background: rgba(5,5,7,0.45);
-  }
-  .pay-title {
-    font-family: 'Barlow', sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.1em; font-size: 12.5px;
-    color: var(--ice-pale); margin-bottom: 16px;
-  }
-  .pay-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  @media (max-width: 560px){ .pay-options { grid-template-columns: 1fr; } }
-  .pay-opt {
-    border: 1px solid var(--line); border-radius: 10px; padding: 16px;
-    text-align: center; background: var(--ink-2);
-  }
-  .pay-opt .k { font-family:'Barlow', sans-serif; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 7px; }
-  .pay-opt .v { font-family:'Archivo Black', sans-serif; font-weight: 700; font-size: 16px; color: var(--white); }
-  .pay-memo {
-    background: var(--ink-2); border: 1px dashed rgba(139,92,246,0.3);
-    border-radius: 10px; padding: 14px 16px; font-size: 13px;
-  }
-  .pay-memo .k { color: var(--muted); margin-bottom: 5px; }
-  .pay-memo .v { font-family:'Barlow', sans-serif; font-weight: 600; color: var(--ice-bright); font-size: 14px; }
-
-  /* ---------- PAYMENT GATE ---------- */
-  .gate-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 30px; }
-  @media (max-width: 600px){ .gate-steps { grid-template-columns: 1fr; } }
-  .gstep {
-    border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px;
-    background: rgba(5,5,7,0.4);
-  }
-  .gstep .gn {
-    font-family:'Archivo Black', sans-serif; font-weight: 800; font-size: 13px;
-    color: var(--ice-bright); margin-bottom: 6px;
-  }
-  .gstep b { font-size: 14px; display: block; margin-bottom: 2px; }
-  .gstep span { font-size: 12.5px; color: var(--muted); }
-
-  /* locked form preview */
-  .lock-wrap { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); }
-  .lock-blur {
-    filter: blur(7px); opacity: 0.4; pointer-events: none; user-select: none;
-    padding: 32px; background: var(--ink-2);
-  }
-  .lock-line { height: 13px; border-radius: 6px; background: rgba(139,92,246,0.18); margin-bottom: 16px; }
-  .lock-field { height: 42px; border-radius: 8px; background: rgba(139,92,246,0.08); margin-bottom: 20px; }
-  .lock-overlay {
-    position: absolute; inset: 0; display: grid; place-items: center;
-    background: linear-gradient(160deg, rgba(5,5,7,0.82), rgba(5,5,7,0.92));
-    backdrop-filter: blur(2px); text-align: center; padding: 36px;
-  }
-  .lock-icon {
-    width: 58px; height: 58px; border-radius: 16px; margin: 0 auto 20px;
-    display: grid; place-items: center; font-size: 26px;
-    background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.3);
-  }
-  .lock-overlay h3 { font-family:'Archivo Black', sans-serif; font-weight: 800; font-size: 24px; margin-bottom: 10px; }
-  .lock-overlay p { color: var(--muted); font-size: 14.5px; max-width: 42ch; margin: 0 auto 26px; }
-  .pay-btn {
-    display: inline-flex; align-items: center; gap: 11px;
-    font-family: 'Barlow', sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.06em; font-size: 17px;
-    color: var(--ink); background: var(--rink);
-    padding: 17px 36px; border-radius: 12px; text-decoration: none;
-    transition: all 0.2s; box-shadow: 0 8px 30px rgba(52,211,153,0.3);
-  }
-  .pay-btn:hover { background: var(--rink-deep); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(52,211,153,0.45); }
-  .pay-secure {
-    margin-top: 18px; font-family:'Barlow', sans-serif; font-size: 11.5px;
-    color: var(--muted); display: flex; align-items: center; gap: 8px; justify-content: center;
-  }
-
-  /* unlocked / embedded form */
-  .unlocked-head {
-    display: flex; align-items: center; gap: 14px; margin-bottom: 8px;
-  }
-  .paid-check {
-    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
-    display: grid; place-items: center; font-size: 18px;
-    background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.4); color: var(--rink);
-  }
-  .form-frame {
-    width: 100%; height: 640px; border: 1px solid var(--line);
-    border-radius: 14px; background: var(--white); margin-top: 22px;
+  .price-fine {
+    font-size: 12.5px; color: var(--muted); margin-top: 18px; line-height: 1.6;
+    max-width: 40ch; margin-left: auto; margin-right: auto;
   }
 
   /* ---------- FOOTER ---------- */
@@ -610,7 +520,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .bar-fill { animation: none; transform: scaleX(1); }
-    .pulse { animation: none; }
+    .pulse, .rec-dot { animation: none; }
   }
 </style>
 </head>
@@ -623,7 +533,7 @@
       <img src="/img/atlas-mark.png" alt="Atlas AI" style="height:30px;width:auto;display:block;">
       <div class="brand-name">ATLAS<span>.</span></div>
     </div>
-    <a href="/signup.html" class="nav-cta">Get started</a>
+    <a href="/signup.html" class="nav-cta">Start free trial</a>
   </div>
 </nav>
 
@@ -632,98 +542,17 @@
   <div class="wrap">
     <div class="eyebrow"><span class="pulse"></span> Early beta · built by a BU student</div>
     <h1 class="hero-title">See your skating the way a <em>coach</em> sees it.</h1>
-    <p class="hero-sub">Upload a clip. Atlas breaks down your skating mechanics frame by frame — knee bend, stride, balance, posture — and hands back real metrics plus coaching you can actually use.</p>
+    <p class="hero-sub">Upload a clip. Atlas breaks down your skating mechanics frame by frame — knee bend, stride, balance, posture — then hands back your numbers, an annotated video, and a coach you can actually ask questions.</p>
     <div class="hero-actions">
-      <a href="/signup.html" class="btn-primary">Get started</a>
+      <a href="/signup.html" class="btn-primary">Start your 5-day free trial</a>
       <a href="#report" class="btn-ghost">See a sample report</a>
-      <span class="price-tag"><b>$15</b>/mo · unlimited clips</span>
+    </div>
+    <div class="trial-line">
+      <span><b>Free for 5 days</b>, then $15/mo · unlimited clips</span>
+      <span style="color:var(--line)">|</span>
+      <span>Card required — cancel before day 5 and you won't be charged</span>
     </div>
 
-    <!-- DASHBOARD MOCKUP -->
-    <div class="hero-demo">
-      <div class="demo-bar">
-        <span class="dot" style="background:#FF5F57"></span>
-        <span class="dot" style="background:#FEBC2E"></span>
-        <span class="dot" style="background:#28C840"></span>
-        <span class="demo-label">atlas · stride_analysis · clip_04.mp4</span>
-      </div>
-      <div class="demo-grid">
-        <!-- left: bars -->
-        <div class="demo-cell">
-          <div class="cell-head">
-            <span class="cell-title">Mechanics breakdown</span>
-            <span class="cell-score">82 / 100</span>
-          </div>
-          <div class="metric">
-            <div class="metric-row"><span class="metric-name">Knee Bend</span><span class="metric-val">118°</span></div>
-            <div class="bar-track"><div class="bar-fill green" style="width:84%"></div></div>
-          </div>
-          <div class="metric">
-            <div class="metric-row"><span class="metric-name">Stride Length</span><span class="metric-val">1.42m</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:71%"></div></div>
-          </div>
-          <div class="metric">
-            <div class="metric-row"><span class="metric-name">Forward Lean</span><span class="metric-val">24°</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:66%"></div></div>
-          </div>
-          <div class="metric">
-            <div class="metric-row"><span class="metric-name">Balance Index</span><span class="metric-val">91/100</span></div>
-            <div class="bar-track"><div class="bar-fill green" style="width:91%"></div></div>
-          </div>
-          <div class="metric">
-            <div class="metric-row"><span class="metric-name">Recovery Time</span><span class="metric-val">0.38s</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:58%"></div></div>
-          </div>
-        </div>
-        <!-- right: radar -->
-        <div class="demo-cell radar-wrap">
-          <svg viewBox="0 0 260 240" width="100%" style="max-width:300px" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="radarFill" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.5"/>
-                <stop offset="100%" stop-color="#34D399" stop-opacity="0.35"/>
-              </linearGradient>
-            </defs>
-            <!-- rings -->
-            <g fill="none" stroke="rgba(139,92,246,0.14)" stroke-width="1">
-              <polygon points="130,30 217,80 217,180 130,210 43,180 43,80"/>
-              <polygon points="130,62 188,95 188,165 130,182 72,165 72,95"/>
-              <polygon points="130,94 159,110 159,150 130,154 101,150 101,110"/>
-            </g>
-            <!-- axes -->
-            <g stroke="rgba(139,92,246,0.1)" stroke-width="1">
-              <line x1="130" y1="120" x2="130" y2="30"/>
-              <line x1="130" y1="120" x2="217" y2="80"/>
-              <line x1="130" y1="120" x2="217" y2="180"/>
-              <line x1="130" y1="120" x2="130" y2="210"/>
-              <line x1="130" y1="120" x2="43" y2="180"/>
-              <line x1="130" y1="120" x2="43" y2="80"/>
-            </g>
-            <!-- data shape -->
-            <polygon points="130,42 205,86 200,170 130,196 58,168 62,92"
-                     fill="url(#radarFill)" stroke="#A78BFA" stroke-width="2"/>
-            <!-- vertices -->
-            <g fill="#A78BFA">
-              <circle cx="130" cy="42" r="3.5"/>
-              <circle cx="205" cy="86" r="3.5"/>
-              <circle cx="200" cy="170" r="3.5"/>
-              <circle cx="130" cy="196" r="3.5"/>
-              <circle cx="58" cy="168" r="3.5"/>
-              <circle cx="62" cy="92" r="3.5"/>
-            </g>
-            <!-- labels -->
-            <g fill="#8A879A" font-family="'Barlow', sans-serif" font-size="9" text-anchor="middle">
-              <text x="130" y="22">POWER</text>
-              <text x="235" y="78">EDGES</text>
-              <text x="234" y="190">STRIDE</text>
-              <text x="130" y="227">BALANCE</text>
-              <text x="26" y="190">POSTURE</text>
-              <text x="28" y="78">AGILITY</text>
-            </g>
-          </svg>
-        </div>
-      </div>
-    </div>
   </div>
 </header>
 
@@ -742,29 +571,87 @@
       </div>
       <div class="feat">
         <div class="feat-num">02</div>
+        <h3>Annotated video</h3>
+        <p>Your clip played back with the tracking drawn on top, so you can see exactly what Atlas saw at every frame of your stride.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">03</div>
+        <h3>Atlas Chat</h3>
+        <p>An AI coach that already has your report open. Ask why a score is what it is, or what to work on first — and get an answer grounded in your numbers.</p>
+      </div>
+      <div class="feat">
+        <div class="feat-num">04</div>
         <h3>AI coaching notes</h3>
         <p>Plain-language feedback: what's working, what's holding you back, and the one fix to prioritize first.</p>
       </div>
       <div class="feat">
-        <div class="feat-num">03</div>
+        <div class="feat-num">05</div>
         <h3>Drill prescriptions</h3>
         <p>Specific drills matched to your weak points, so you know exactly what to work on at the next session.</p>
       </div>
       <div class="feat">
-        <div class="feat-num">04</div>
+        <div class="feat-num">06</div>
         <h3>PDF report</h3>
         <p>A clean, shareable report with your charts and scores. Send it to a coach, parent, or keep it for your records.</p>
       </div>
-      <div class="feat">
-        <div class="feat-num">05</div>
-        <h3>Progress tracking</h3>
-        <p>Submit again next week and watch the numbers move. See whether that fix actually stuck.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SHOWCASE: CHAT + OVERLAY -->
+<section class="showcase">
+  <div class="wrap">
+    <div class="showcase-grid">
+
+      <!-- Atlas Chat -->
+      <div class="show-card">
+        <div class="show-top">
+          <span class="show-tag">Included</span>
+          <h3>A coach that's read your report.</h3>
+          <p>Not a generic chatbot. Atlas Chat is loaded with your own analysis before you type a word — your scores, your raw measurements, your drills.</p>
+        </div>
+        <div class="show-body">
+          <div class="chat-box">
+            <div class="cbubble-coach">Your knee bend and lean are already elite. Arm drive is the one thing capping your top speed.</div>
+            <div class="cbubble-you">what should I do about it</div>
+            <div class="cbubble-coach">Stickless arm-pump skating — full lengths, no stick, arms driving hard in rhythm with every stride. 4 sets.</div>
+            <div class="chat-input-fake">
+              <div class="fld">Ask about your skating…</div>
+              <div class="snd">Send</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="feat">
-        <div class="feat-num">06</div>
-        <h3>Delivered your way</h3>
-        <p>Results come back by email, text, or Dropbox link — whatever's easiest for you.</p>
+
+      <!-- Annotated video -->
+      <div class="show-card">
+        <div class="show-top">
+          <span class="show-tag">Included</span>
+          <h3>Watch the tracking, frame by frame.</h3>
+          <p>Numbers tell you what changed. The overlay shows you where. Your clip comes back with joint tracking drawn over your stride.</p>
+        </div>
+        <div class="show-body">
+          <div class="overlay-mock">
+            <div class="vid-frame">
+              <div class="vid-play">
+                <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor" aria-hidden="true">
+                  <path d="M8.5 4.8 L20.5 12 L8.5 19.2 Z"/>
+                </svg>
+              </div>
+              <div class="vid-badge">clip_04 · annotated</div>
+              <div class="vid-controls">
+                <div class="vid-scrub"><span></span></div>
+                <div class="vid-times"><span>0:04</span><span>0:11</span></div>
+              </div>
+            </div>
+            <div class="overlay-caption">
+              <span class="rec-dot"></span>
+              <span>Joint tracking rendered on your own footage</span>
+            </div>
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
 </section>
@@ -815,7 +702,6 @@
       <!-- CHARTS ROW -->
       <div class="report-charts">
 
-        <!-- knee angle over stride cycle -->
         <div class="chart-cell">
           <h5>Knee angle · stride cycle</h5>
           <div class="csub">degrees vs. % of stride</div>
@@ -826,7 +712,6 @@
                 <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
               </linearGradient>
             </defs>
-            <!-- grid -->
             <g stroke="rgba(139,92,246,0.1)" stroke-width="1">
               <line x1="34" y1="20" x2="34" y2="140"/>
               <line x1="34" y1="140" x2="290" y2="140"/>
@@ -838,13 +723,9 @@
               <text x="8" y="103">118</text>
               <text x="8" y="143">104</text>
             </g>
-            <!-- optimal band -->
             <rect x="34" y="58" width="256" height="34" fill="#34D399" opacity="0.07"/>
-            <!-- area -->
             <path d="M34,118 L70,96 L106,70 L142,64 L178,72 L214,98 L250,124 L290,112 L290,140 L34,140 Z" fill="url(#kneeFill)"/>
-            <!-- line -->
             <path d="M34,118 L70,96 L106,70 L142,64 L178,72 L214,98 L250,124 L290,112" fill="none" stroke="#A78BFA" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-            <!-- min marker -->
             <circle cx="142" cy="64" r="4" fill="#34D399"/>
             <text x="142" y="52" fill="#34D399" font-family="'Barlow', sans-serif" font-size="8" text-anchor="middle">131° peak</text>
           </svg>
@@ -854,7 +735,6 @@
           </div>
         </div>
 
-        <!-- you vs benchmark -->
         <div class="chart-cell">
           <h5>You vs. benchmark</h5>
           <div class="csub">percentile by category</div>
@@ -866,7 +746,6 @@
               <text x="0" y="114">BAL</text>
               <text x="0" y="144">POS</text>
             </g>
-            <!-- tracks -->
             <g>
               <rect x="40" y="14" width="240" height="12" rx="6" fill="rgba(139,92,246,0.1)"/>
               <rect x="40" y="44" width="240" height="12" rx="6" fill="rgba(139,92,246,0.1)"/>
@@ -874,7 +753,6 @@
               <rect x="40" y="104" width="240" height="12" rx="6" fill="rgba(139,92,246,0.1)"/>
               <rect x="40" y="134" width="240" height="12" rx="6" fill="rgba(139,92,246,0.1)"/>
             </g>
-            <!-- your bars -->
             <g>
               <rect x="40" y="14" width="170" height="12" rx="6" fill="#8B5CF6"/>
               <rect x="40" y="44" width="194" height="12" rx="6" fill="#8B5CF6"/>
@@ -882,7 +760,6 @@
               <rect x="40" y="104" width="218" height="12" rx="6" fill="#34D399"/>
               <rect x="40" y="134" width="132" height="12" rx="6" fill="#F2B33D"/>
             </g>
-            <!-- benchmark line -->
             <line x1="196" y1="8" x2="196" y2="152" stroke="#FFFFFF" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
             <text x="196" y="166" fill="#8A879A" font-family="'Barlow', sans-serif" font-size="8" text-anchor="middle">avg</text>
           </svg>
@@ -892,14 +769,12 @@
           </div>
         </div>
 
-        <!-- balance stability donut -->
         <div class="chart-cell">
           <h5>Balance stability</h5>
           <div class="csub">weight distribution</div>
           <svg viewBox="0 0 300 170" width="100%" xmlns="http://www.w3.org/2000/svg">
             <g transform="translate(150,88)">
               <circle r="56" fill="none" stroke="rgba(139,92,246,0.12)" stroke-width="16"/>
-              <!-- 91% arc -->
               <circle r="56" fill="none" stroke="#34D399" stroke-width="16"
                       stroke-linecap="round"
                       stroke-dasharray="320 352" stroke-dashoffset="0"
@@ -915,25 +790,25 @@
 
       </div>
 
-      <!-- CONTINUES STRIP — shows this is only part of the report -->
+      <!-- CONTINUES STRIP -->
       <div class="continues">
         <div class="continues-peek">
           <div class="peek-row">
             <div class="peek-icon">📐</div>
-            <div class="peek-txt"><b>Edge control &amp; crossovers</b><span>Inside/outside edge angles, weight transfer timing, crossover efficiency</span></div>
+            <div class="peek-txt"><b>Strengths &amp; development areas</b><span>Every metric scored, ranked, and explained in plain language</span></div>
           </div>
           <div class="peek-row">
             <div class="peek-icon">⚡</div>
-            <div class="peek-txt"><b>Acceleration profile</b><span>First-three-stride explosiveness, top-speed posture, deceleration control</span></div>
+            <div class="peek-txt"><b>Your 3-week focus plan</b><span>What to drill first, second and third — with the goal for each week</span></div>
           </div>
           <div class="peek-row">
             <div class="peek-icon">🎯</div>
-            <div class="peek-txt"><b>Frame-by-frame breakdown</b><span>Annotated stills at each key moment of the stride cycle</span></div>
+            <div class="peek-txt"><b>Raw measurements</b><span>Every angle and count behind the scores, so nothing is a black box</span></div>
           </div>
         </div>
         <div class="continues-label">
-          <span class="pages-pill">1 of 9 sections</span>
-          <span>You're seeing a <b>preview</b> — the full PDF runs 9 sections per video.</span>
+          <span class="pages-pill">Preview</span>
+          <span>You're seeing part of it — the full PDF runs <b>5 pages</b> per video.</span>
         </div>
       </div>
 
@@ -946,14 +821,13 @@
         <div class="soon-top">
           <div>
             <h4>The full Atlas app</h4>
-            <p>Right now I run your videos by hand. Here's what the full product will do once it's built — and what every beta tester is helping shape.</p>
+            <p>Here's what's being built next — and what every beta tester is helping shape.</p>
           </div>
           <span class="soon-badge">In development</span>
         </div>
 
         <div class="soon-grid">
 
-          <!-- progress tracking -->
           <div class="soon-cell">
             <div class="ico">📈</div>
             <h6>Stat tracking over time</h6>
@@ -985,7 +859,6 @@
             </svg>
           </div>
 
-          <!-- drill library -->
           <div class="soon-cell">
             <div class="ico">🏒</div>
             <h6>Personalized drill library</h6>
@@ -1006,7 +879,6 @@
             <div style="font-family:'Barlow', sans-serif; font-size:11px; color:var(--muted); margin-top:8px">5 of 12 prescribed drills mastered</div>
           </div>
 
-          <!-- nearby events -->
           <div class="soon-cell">
             <div class="ico">📍</div>
             <h6>Nearby events &amp; clinics</h6>
@@ -1031,11 +903,10 @@
             <div class="event-row"><span class="event-dot"></span><span class="ename">Stick &amp; Puck — Open Ice</span><span class="edist">3.8 mi · Daily</span></div>
           </div>
 
-          <!-- in-app dashboard / leaderboard phone -->
           <div class="soon-cell">
             <div class="ico">📱</div>
-            <h6>Your dashboard &amp; rankings</h6>
-            <p class="cap">A home base in your pocket: your scores, your streak, and where you rank against skaters at your level.</p>
+            <h6>Rankings &amp; benchmarks</h6>
+            <p class="cap">See where you stand against skaters at your level — same age group, same position.</p>
             <div style="background:var(--ink);border:1px solid var(--line);border-radius:14px;padding:18px 20px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
                 <span style="font-family:'Barlow', sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;font-size:11px;color:var(--ice-pale)">U16 · Forwards</span>
@@ -1064,61 +935,21 @@
   <div class="wrap">
     <div class="price-card">
       <div class="price-label">Beta pricing</div>
+      <div class="trial-flag">First 5 days free</div>
       <div class="price-big"><sup>$</sup>15</div>
-      <div class="price-per">per month</div>
+      <div class="price-per">per month after your trial</div>
       <div class="price-unlim">Unlimited videos. Cancel anytime.</div>
       <ul class="price-list">
         <li><span class="check">▸</span> Submit as many clips as you want</li>
         <li><span class="check">▸</span> Full metrics + AI coaching on each</li>
-        <li><span class="check">▸</span> PDF report you can share</li>
-        <li><span class="check">▸</span> Email, text, or Dropbox delivery</li>
+        <li><span class="check">▸</span> Annotated video with joint tracking</li>
+        <li><span class="check">▸</span> Atlas Chat — your report, on call</li>
+        <li><span class="check">▸</span> 5-page PDF report you can share</li>
         <li><span class="check">▸</span> Direct line to me for feedback</li>
+        <li><span class="check">▸</span> Founding member rate — $15/mo locked in for life</li>
       </ul>
-      <a href="/signup.html" class="btn-primary" style="display:inline-block">Start now</a>
-    </div>
-  </div>
-</section>
-
-<!-- SUBMIT -->
-<section class="submit" id="submit">
-  <div class="wrap">
-    <div class="submit-card">
-      <h3>Get your video analyzed</h3>
-      <p class="lead">Create your account, subscribe, and upload — all from your dashboard.</p>
-
-      <div class="gate-steps">
-        <div class="gstep">
-          <div class="gn">01</div>
-          <b>Create your account</b>
-          <span>Takes under a minute. No payment needed yet.</span>
-        </div>
-        <div class="gstep">
-          <div class="gn">02</div>
-          <b>Subscribe — $15/mo</b>
-          <span>Locked in for life as a founding beta member.</span>
-        </div>
-        <div class="gstep">
-          <div class="gn">03</div>
-          <b>Upload &amp; get your report</b>
-          <span>Right from your dashboard, whenever you're ready.</span>
-        </div>
-      </div>
-
-      <div class="lock-wrap">
-        <div class="lock-overlay" style="position:static; backdrop-filter:none; background:rgba(139,92,246,0.06); border:1px solid var(--line);">
-          <div>
-            <h3>Ready when you are</h3>
-            <p>Founding-member access is open now — $15/mo, locked in for life.</p>
-            <a href="/signup.html" class="pay-btn">Create your account →</a>
-            <div class="pay-secure">Already signed up? <a href="/login.html" style="color:var(--ice-bright)">Log in</a></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- fallback link, always available -->
-      <p style="text-align:center;margin-top:22px;font-size:12.5px;color:var(--muted)">
-        Questions? Email <a href="mailto:AtlasSportsCoaching@gmail.com" style="color:var(--ice-bright)">AtlasSportsCoaching@gmail.com</a>
-      </p>
+      <a href="/signup.html" class="btn-primary" style="display:inline-block">Start your 5-day free trial</a>
+      <p class="price-fine">Card required to start. Cancel any time before day 5 and you won't be charged — manage or cancel yourself from your dashboard.</p>
     </div>
   </div>
 </section>
