@@ -1,225 +1,220 @@
-// api/atlas-chat.js
-//
-// ATLAS CHAT — backend (auto-reads the player's PDF report)
-// =========================================================
-// Vercel serverless function. No npm packages — plain fetch only, so this
-// works on a static HTML site with no build step.
-//
-// HOW IT WORKS:
-//   The first time a player chats, this downloads their latest PDF report from
-//   private Supabase storage, has Gemini read it once, and saves the extracted
-//   summary into videos.report_data. Every message after that reads the saved
-//   text — fast and cheap. You never paste anything by hand.
-//
-// PUT THIS FILE AT: api/atlas-chat.js
-//
-// ENV VARS (already set in Vercel):
-//   GEMINI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+<!-- ================= ATLAS CHAT — paste INSIDE <div id="app">, right after
+     <div class="list" id="videoList"></div> ================= -->
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-const DAILY_MESSAGE_LIMIT = 25;
-const VIDEOS_TABLE = 'videos';
-const STORAGE_BUCKET = 'reports';
-const GEMINI_MODEL = 'gemini-flash-latest';
-
-function sbHeaders(extra) {
-  return Object.assign(
-    {
-      apikey: SERVICE_KEY,
-      Authorization: `Bearer ${SERVICE_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    extra || {}
-  );
-}
-
-// Ask Gemini something. `pdfBase64` is optional.
-async function askGemini(systemPrompt, userText, pdfBase64) {
-  const parts = [];
-  if (pdfBase64) {
-    parts.push({ inline_data: { mime_type: 'application/pdf', data: pdfBase64 } });
+<style>
+  .atlas-chat-wrap { margin: 26px 0; }
+  .atlas-chat-label {
+    font-size: 11px; letter-spacing: 2px; color: #A78BFA;
+    font-weight: 700; margin-bottom: 10px;
   }
-  parts.push({ text: userText });
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: parts }],
-      }),
-    }
-  );
-
-  const data = await res.json();
-  if (!res.ok) {
-    console.error('Gemini error:', JSON.stringify(data));
-    throw new Error('gemini_failed');
+  .atlas-chat-panel {
+    background: #0e0c17;
+    border: 1px solid rgba(139,92,246,0.35);
+    border-radius: 12px;
+    padding: 18px 20px;
   }
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
-
-// Download the PDF out of the private bucket using the service key.
-// Tries folder = row.id first, then folder = row.user_id as a fallback,
-// since either is plausible and a wrong guess would fail silently.
-async function downloadReportPdf(row) {
-  const ref = row.report_url || '';
-
-  const candidates = ref.includes('/')
-    ? [ref]
-    : [
-        `${row.id}/${ref}_report.pdf`,
-        `${row.user_id}/${ref}_report.pdf`,
-      ];
-
-  for (const path of candidates) {
-    const res = await fetch(
-      `${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${path}`,
-      { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
-    );
-    if (res.ok) {
-      const buf = await res.arrayBuffer();
-      return Buffer.from(buf).toString('base64');
-    }
-    console.log('PDF not found at:', path);
+  .atlas-chat-head { display: flex; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .atlas-chat-title { color: #A78BFA; font-size: 11px; letter-spacing: 2px; font-weight: 700; }
+  .atlas-chat-pill {
+    background: rgba(52,211,153,0.14); color: #34D399;
+    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 5px;
   }
-  return null;
-}
-
-const EXTRACT_PROMPT = `
-You are reading a hockey skating-analysis report PDF. Pull out ALL of the
-information a coach would need to discuss it with the player, as plain text:
-
-- The overall score
-- Every metric name and its score
-- The strengths section, with the descriptions
-- The areas to improve, with the descriptions AND the drills listed for each
-- The 3-week focus plan
-- All raw measurements (angles, stride counts, etc.)
-- Any notes or caveats about the clip or tracking
-
-Write it as a clean plain-text summary. Do not add commentary, do not invent
-anything that isn't in the document, do not leave numbers out.
-`.trim();
-
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  .atlas-chat-count { margin-left: auto; color: #6E6C7C; font-size: 11px; }
+  .atlas-chat-messages {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-bottom: 14px; max-height: 340px; overflow-y: auto;
   }
+  .atlas-msg-coach {
+    align-self: flex-start; background: #241f36; color: #E4E2EC;
+    padding: 9px 13px; border-radius: 10px; font-size: 13.5px;
+    max-width: 80%; line-height: 1.5; white-space: pre-wrap;
+  }
+  .atlas-msg-user {
+    align-self: flex-end; background: #8B5CF6; color: #fff;
+    padding: 9px 13px; border-radius: 10px; font-size: 13.5px; max-width: 80%;
+  }
+  .atlas-chat-empty { color: #6E6C7C; font-size: 13px; font-style: italic; }
+  .atlas-chat-error { color: #F87171; font-size: 12px; margin-bottom: 10px; }
+  .atlas-chat-row { display: flex; gap: 8px; }
+  .atlas-chat-input {
+    flex: 1; background: #08060e;
+    border: 1px solid rgba(139,92,246,0.3); border-radius: 8px;
+    padding: 10px 12px; color: #fff; font-size: 13.5px;
+    font-family: 'Barlow', inherit; outline: none;
+  }
+  .atlas-chat-input::placeholder { color: #6E6C7C; }
+  .atlas-chat-input:focus { border-color: rgba(139,92,246,0.7); }
+  .atlas-chat-send {
+    background: #8B5CF6; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 20px; font-size: 13.5px; font-weight: 700;
+    cursor: pointer; font-family: 'Barlow', inherit;
+  }
+  .atlas-chat-send:disabled { opacity: 0.5; cursor: default; }
 
+  /* Locked state for non-subscribers */
+  .atlas-chat-locked { text-align: center; padding: 8px 0 4px; }
+  .atlas-chat-locked h4 {
+    margin: 0 0 8px; font-family: 'Archivo Black', sans-serif;
+    color: #fff; font-size: 17px;
+  }
+  .atlas-chat-locked p {
+    margin: 0 0 16px; color: #8A879A; font-size: 14px; line-height: 1.6;
+  }
+</style>
+
+<div class="atlas-chat-wrap">
+  <div class="atlas-chat-label">ASK YOUR COACH</div>
+  <div class="atlas-chat-panel">
+
+    <!-- Locked view (non-subscribers) -->
+    <div id="atlasChatLocked" style="display:none;">
+      <div class="atlas-chat-locked">
+        <h4>Atlas Chat</h4>
+        <p>
+          Ask your coach anything about your report — why a score is what it is,
+          which drill to run first, what to focus on this week.<br>
+          Included with the beta plan.
+        </p>
+        <a class="btn btn-primary" id="atlasChatUpgrade" href="#" target="_blank" rel="noopener">Upgrade — $15/mo</a>
+      </div>
+    </div>
+
+    <!-- Live view (subscribers) -->
+    <div id="atlasChatLive" style="display:none;">
+      <div class="atlas-chat-head">
+        <span class="atlas-chat-title">ATLAS CHAT</span>
+        <span class="atlas-chat-pill">Knows your latest report</span>
+        <span class="atlas-chat-count" id="atlasChatCount"></span>
+      </div>
+
+      <div class="atlas-chat-messages" id="atlasChatMessages">
+        <div class="atlas-chat-empty" id="atlasChatEmpty">
+          Ask anything about your last clip — what to fix, what drills to run, why a score is what it is.
+        </div>
+      </div>
+
+      <div class="atlas-chat-error" id="atlasChatError" style="display:none;"></div>
+
+      <div class="atlas-chat-row">
+        <input class="atlas-chat-input" id="atlasChatInput" placeholder="Ask about your skating…" />
+        <button class="atlas-chat-send" id="atlasChatSend">Send</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(async function () {
+  var messagesEl = document.getElementById('atlasChatMessages');
+  var emptyEl    = document.getElementById('atlasChatEmpty');
+  var errorEl    = document.getElementById('atlasChatError');
+  var inputEl    = document.getElementById('atlasChatInput');
+  var sendEl     = document.getElementById('atlasChatSend');
+  var countEl    = document.getElementById('atlasChatCount');
+  var lockedEl   = document.getElementById('atlasChatLocked');
+  var liveEl     = document.getElementById('atlasChatLive');
+
+  // --- Show locked or live depending on subscription --------------------
   try {
-    const { accessToken, message } = req.body || {};
-    if (!accessToken || !message) {
-      return res.status(400).json({ error: 'Missing accessToken or message' });
-    }
+    var userRes = await supabaseClient.auth.getUser();
+    var uid = userRes && userRes.data && userRes.data.user && userRes.data.user.id;
 
-    // --- 1. Who is this? ------------------------------------------------
-    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${accessToken}` },
-    });
-    if (!userRes.ok) return res.status(401).json({ error: 'Not logged in' });
+    var profRes = await supabaseClient
+      .from('profiles')
+      .select('subscription_status')
+      .eq('id', uid)
+      .single();
 
-    const user = await userRes.json();
-    const userId = user.id;
+    var status = profRes && profRes.data ? profRes.data.subscription_status : null;
+    var allowed = (status === 'active' || status === 'trialing');
 
-    // --- 2. Daily limit -------------------------------------------------
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    const countRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/chat_messages?user_id=eq.${userId}` +
-        `&created_at=gte.${todayStart.toISOString()}&select=id`,
-      { headers: sbHeaders() }
-    );
-    const sentToday = await countRes.json();
-    const usedCount = Array.isArray(sentToday) ? sentToday.length : 0;
-
-    if (usedCount >= DAILY_MESSAGE_LIMIT) {
-      return res.status(429).json({
-        error: `You've used all ${DAILY_MESSAGE_LIMIT} messages for today. Resets at midnight.`,
-        remaining: 0,
-      });
-    }
-
-    // --- 3. Latest report row -------------------------------------------
-    const rowRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/${VIDEOS_TABLE}?user_id=eq.${userId}` +
-        `&report_url=not.is.null&order=created_at.desc&limit=1`,
-      { headers: sbHeaders() }
-    );
-    const rows = await rowRes.json();
-    const row = Array.isArray(rows) ? rows[0] : null;
-
-    if (!row) {
-      return res.status(404).json({
-        error: "You don't have a finished report yet — upload a clip and we'll analyze it.",
-      });
-    }
-
-    // --- 4. Get the report text (cached, or read the PDF once) ----------
-    let reportText = row.report_data;
-
-    if (!reportText) {
-      const pdfBase64 = await downloadReportPdf(row);
-      if (!pdfBase64) {
-        console.error('Could not find PDF. row.id:', row.id, 'report_url:', row.report_url);
-        return res.status(404).json({ error: "I couldn't open your report file. Let Michele know." });
+    if (allowed) {
+      liveEl.style.display = 'block';
+    } else {
+      lockedEl.style.display = 'block';
+      var upBtn = document.getElementById('atlasChatUpgrade');
+      if (typeof ATLAS_CONFIG !== 'undefined' && ATLAS_CONFIG.STRIPE_PAYMENT_LINK) {
+        upBtn.href = ATLAS_CONFIG.STRIPE_PAYMENT_LINK;
       }
-
-      reportText = await askGemini(EXTRACT_PROMPT, 'Extract this report.', pdfBase64);
-
-      if (reportText) {
-        // Cache it so the PDF is only ever read once per report.
-        await fetch(`${SUPABASE_URL}/rest/v1/${VIDEOS_TABLE}?id=eq.${row.id}`, {
-          method: 'PATCH',
-          headers: sbHeaders({ Prefer: 'return=minimal' }),
-          body: JSON.stringify({ report_data: reportText }),
-        });
-      }
+      return; // don't wire up the chat at all
     }
-
-    if (!reportText) {
-      return res.status(500).json({ error: "I couldn't read your report. Let Michele know." });
-    }
-
-    // --- 5. Answer as the coach -----------------------------------------
-    const coachPrompt = `
-You are the Atlas AI hockey coach, talking one-on-one with a player about their
-own skating analysis.
-
-Voice: direct, coach-like, plain language. Not corporate, not overly technical.
-Lead with what's working before what needs work. Every weakness you name must
-come with a concrete on-ice drill, never just a criticism. Keep replies short
-(2-4 sentences) unless they ask for more.
-
-Ground every answer ONLY in the report below. Never invent scores, stats, or
-measurements. If they ask about something the report doesn't cover, say so
-plainly and offer what you can speak to instead.
-
-THIS PLAYER'S LATEST REPORT:
-${reportText}
-`.trim();
-
-    const reply = await askGemini(coachPrompt, message);
-
-    // --- 6. Log it ------------------------------------------------------
-    await fetch(`${SUPABASE_URL}/rest/v1/chat_messages`, {
-      method: 'POST',
-      headers: sbHeaders({ Prefer: 'return=minimal' }),
-      body: JSON.stringify({ user_id: userId, message, reply }),
-    });
-
-    return res.status(200).json({
-      reply: reply || "Sorry, I couldn't come up with a response. Try rephrasing?",
-      remaining: DAILY_MESSAGE_LIMIT - usedCount - 1,
-    });
-  } catch (err) {
-    console.error('Atlas Chat error:', err);
-    return res.status(500).json({ error: 'Something went wrong.' });
+  } catch (e) {
+    console.error('Atlas Chat: could not check subscription', e);
+    lockedEl.style.display = 'block';
+    return;
   }
-}
+
+  function addBubble(text, who) {
+    if (emptyEl) { emptyEl.style.display = 'none'; }
+    var div = document.createElement('div');
+    div.className = who === 'user' ? 'atlas-msg-user' : 'atlas-msg-coach';
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
+
+  async function send() {
+    var text = inputEl.value.trim();
+    if (!text) return;
+
+    errorEl.style.display = 'none';
+    addBubble(text, 'user');
+    inputEl.value = '';
+    sendEl.disabled = true;
+
+    var thinking = addBubble('Thinking…', 'coach');
+
+    try {
+      var sessionResult = await supabaseClient.auth.getSession();
+      var token = sessionResult &&
+                  sessionResult.data &&
+                  sessionResult.data.session &&
+                  sessionResult.data.session.access_token;
+
+      if (!token) {
+        thinking.remove();
+        showError('You need to be logged in to use Atlas Chat.');
+        sendEl.disabled = false;
+        return;
+      }
+
+      var res = await fetch('/api/atlas-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: token, message: text })
+      });
+
+      var data = await res.json();
+      thinking.remove();
+
+      if (!res.ok) {
+        showError(data.error || 'Something went wrong.');
+      } else {
+        addBubble(data.reply, 'coach');
+        if (typeof data.remaining === 'number') {
+          countEl.textContent = data.remaining + ' messages left today';
+        }
+      }
+    } catch (e) {
+      thinking.remove();
+      showError('Connection problem — try again.');
+      console.error(e);
+    } finally {
+      sendEl.disabled = false;
+    }
+  }
+
+  sendEl.addEventListener('click', send);
+  inputEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') send();
+  });
+})();
+</script>
+<!-- ================= END ATLAS CHAT ================= -->
