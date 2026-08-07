@@ -29,12 +29,13 @@
   }
   .video-row .name { font-weight: 600; font-size: 14px; }
   .video-row .meta { color: var(--mute); font-size: 12px; }
-  .video-actions { display: flex; gap: 10px; align-items: center; }
+  .video-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
   .videos-panel { display: none; margin-top: 6px; }
   .videos-panel.open { display: block; }
   .empty-note { color: var(--mute); font-size: 13px; padding: 10px 0; }
-  input[type="file"].report-input { display: none; }
+  input[type="file"].hidden-input { display: none; }
+  .has-clip { color: #34D399; font-size: 12px; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -71,19 +72,44 @@
   const result = await requireAuth();
   if (!result) return;
   const { user, profile } = result;
-console.log("USER:", user);
-console.log("PROFILE:", profile);
-console.log("PROFILE is_admin:", profile?.is_admin);
-console.log("PROFILE ERROR CHECK:", profile);
 
   document.getElementById('loadingNote').style.display = 'none';
 
-if (!profile || !profile.is_admin) {
-  document.getElementById('deniedNote').style.display = 'block';
-  return;
-}
+  if (!profile || !profile.is_admin) {
+    document.getElementById('deniedNote').style.display = 'block';
+    return;
+  }
 
   document.getElementById('app').style.display = 'block';
+
+  // ------------------------------------------------------------------
+  // Opens a private storage file in a new tab.
+  // The tab is opened IMMEDIATELY on click (before any await), otherwise
+  // the browser treats it as a popup and silently blocks it.
+  // ------------------------------------------------------------------
+  async function openStorageFile(bucket, path) {
+    const win = window.open('', '_blank');
+    try {
+      const { data, error } = await supabaseClient
+        .storage.from(bucket)
+        .createSignedUrl(path, 60 * 10);
+
+      if (error || !data) {
+        if (win) win.close();
+        alert('Could not open file: ' + (error ? error.message : 'not found'));
+        return;
+      }
+      if (win) {
+        win.location.href = data.signedUrl;
+      } else {
+        // Popup was blocked entirely — fall back to same-tab navigation.
+        window.location.href = data.signedUrl;
+      }
+    } catch (e) {
+      if (win) win.close();
+      alert('Could not open file: ' + e.message);
+    }
+  }
 
   const { data: profiles, error: pErr } = await supabaseClient
     .from('profiles')
@@ -137,74 +163,134 @@ if (!profile || !profile.is_admin) {
         const row = document.createElement('div');
         row.className = 'video-row';
         const fileName = v.file_path.split('/').pop();
+
         row.innerHTML = `
           <div>
             <div class="name">${fileName}</div>
-            <div class="meta">${new Date(v.created_at).toLocaleString()} · <span class="pill ${v.status === 'processed' ? 'active' : 'inactive'}">${v.status}</span></div>
+            <div class="meta">
+              ${new Date(v.created_at).toLocaleString()} ·
+              <span class="pill ${v.status === 'processed' ? 'active' : 'inactive'}">${v.status}</span>
+              ${v.annotated_url ? ' · <span class="has-clip">analysis clip attached</span>' : ''}
+            </div>
           </div>
           <div class="video-actions">
-            <button class="btn btn-ghost btn-sm" data-action="watch">View video</button>
-            ${v.status === 'processed'
-              ? `<button class="btn btn-ghost btn-sm" data-action="viewreport">View report</button>`
-              : `<button class="btn btn-primary btn-sm" data-action="upload">Upload report</button>
-                 <input type="file" class="report-input" accept="application/pdf">`
+            <button class="btn btn-ghost btn-sm" data-action="watch">View upload</button>
+
+            ${v.report_url
+              ? `<button class="btn btn-ghost btn-sm" data-action="viewreport">View report</button>
+                 <button class="btn btn-ghost btn-sm" data-action="upload">Replace report</button>`
+              : `<button class="btn btn-primary btn-sm" data-action="upload">Upload report</button>`
             }
+            <input type="file" class="hidden-input report-input" accept="application/pdf">
+
+            ${v.annotated_url
+              ? `<button class="btn btn-ghost btn-sm" data-action="viewclip">View clip</button>
+                 <button class="btn btn-ghost btn-sm" data-action="uploadclip">Replace clip</button>`
+              : `<button class="btn btn-ghost btn-sm" data-action="uploadclip">Upload analysis clip</button>`
+            }
+            <input type="file" class="hidden-input clip-input" accept="video/*">
           </div>
         `;
 
-        row.querySelector('[data-action="watch"]').addEventListener('click', async () => {
-          const { data, error } = await supabaseClient
-            .storage.from('videos')
-            .createSignedUrl(v.file_path, 60 * 10);
-          if (error) return alert('Could not open video: ' + error.message);
-          window.open(data.signedUrl, '_blank');
+        // --- View the player's original upload ---
+        row.querySelector('[data-action="watch"]').addEventListener('click', () => {
+          openStorageFile('videos', v.file_path);
         });
 
+        // --- View the finished PDF report ---
         const viewReportBtn = row.querySelector('[data-action="viewreport"]');
         if (viewReportBtn) {
-          viewReportBtn.addEventListener('click', async () => {
-            const { data, error } = await supabaseClient
-              .storage.from('reports')
-              .createSignedUrl(v.report_url, 60 * 10);
-            if (error) return alert('Could not open report: ' + error.message);
-            window.open(data.signedUrl, '_blank');
+          viewReportBtn.addEventListener('click', () => {
+            openStorageFile('reports', v.report_url);
           });
         }
 
+        // --- View the annotated analysis clip ---
+        const viewClipBtn = row.querySelector('[data-action="viewclip"]');
+        if (viewClipBtn) {
+          viewClipBtn.addEventListener('click', () => {
+            openStorageFile('reports', v.annotated_url);
+          });
+        }
+
+        // --- Upload / replace the PDF report ---
         const uploadBtn = row.querySelector('[data-action="upload"]');
-        const fileInput = row.querySelector('.report-input');
-        if (uploadBtn) {
-          uploadBtn.addEventListener('click', () => fileInput.click());
-          fileInput.addEventListener('change', async () => {
-            const file = fileInput.files[0];
-            if (!file) return;
-            uploadBtn.disabled = true;
-            uploadBtn.innerHTML = '<span class="spinner"></span>';
+        const reportInput = row.querySelector('.report-input');
+        uploadBtn.addEventListener('click', () => reportInput.click());
+        reportInput.addEventListener('change', async () => {
+          const file = reportInput.files[0];
+          if (!file) return;
 
-            const reportPath = `${p.id}/${v.id}_report.pdf`;
-            const { error: upErr } = await supabaseClient
-              .storage.from('reports')
-              .upload(reportPath, file, { upsert: true });
+          const originalLabel = uploadBtn.textContent;
+          uploadBtn.disabled = true;
+          uploadBtn.innerHTML = '<span class="spinner"></span>';
 
-            if (upErr) {
-              alert('Upload failed: ' + upErr.message);
-              uploadBtn.disabled = false;
-              uploadBtn.textContent = 'Upload report';
-              return;
-            }
+          const reportPath = `${p.id}/${v.id}_report.pdf`;
+          const { error: upErr } = await supabaseClient
+            .storage.from('reports')
+            .upload(reportPath, file, { upsert: true });
 
-            const { error: updErr } = await supabaseClient
-              .from('videos')
-              .update({ report_url: reportPath, status: 'processed' })
-              .eq('id', v.id);
+          if (upErr) {
+            alert('Upload failed: ' + upErr.message);
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = originalLabel;
+            return;
+          }
 
-            if (updErr) {
-              alert('Report uploaded, but marking it complete failed: ' + updErr.message);
-            } else {
-              location.reload();
-            }
-          });
-        }
+          // report_data is cleared so Atlas Chat re-reads the new PDF.
+          const { error: updErr } = await supabaseClient
+            .from('videos')
+            .update({ report_url: reportPath, status: 'processed', report_data: null })
+            .eq('id', v.id);
+
+          if (updErr) {
+            alert('Report uploaded, but marking it complete failed: ' + updErr.message);
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = originalLabel;
+          } else {
+            location.reload();
+          }
+        });
+
+        // --- Upload / replace the annotated analysis clip ---
+        const uploadClipBtn = row.querySelector('[data-action="uploadclip"]');
+        const clipInput = row.querySelector('.clip-input');
+        uploadClipBtn.addEventListener('click', () => clipInput.click());
+        clipInput.addEventListener('change', async () => {
+          const file = clipInput.files[0];
+          if (!file) return;
+
+          const originalLabel = uploadClipBtn.textContent;
+          uploadClipBtn.disabled = true;
+          uploadClipBtn.innerHTML = '<span class="spinner"></span>';
+
+          const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
+          const clipPath = `${p.id}/${v.id}_annotated.${ext}`;
+
+          const { error: clipErr } = await supabaseClient
+            .storage.from('reports')
+            .upload(clipPath, file, { upsert: true, contentType: file.type });
+
+          if (clipErr) {
+            alert('Clip upload failed: ' + clipErr.message);
+            uploadClipBtn.disabled = false;
+            uploadClipBtn.textContent = originalLabel;
+            return;
+          }
+
+          const { error: updErr } = await supabaseClient
+            .from('videos')
+            .update({ annotated_url: clipPath })
+            .eq('id', v.id);
+
+          if (updErr) {
+            alert('Clip uploaded, but saving the link failed: ' + updErr.message);
+            uploadClipBtn.disabled = false;
+            uploadClipBtn.textContent = originalLabel;
+          } else {
+            location.reload();
+          }
+        });
 
         panel.appendChild(row);
       });
