@@ -23,7 +23,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const DAILY_MESSAGE_LIMIT = 25;
 const VIDEOS_TABLE = 'videos';
 const STORAGE_BUCKET = 'reports';
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-flash-latest';
 
 function sbHeaders(extra) {
   return Object.assign(
