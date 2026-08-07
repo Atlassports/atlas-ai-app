@@ -16,6 +16,20 @@
   }
   .sec-label.muted { color: #8A879A; }
 
+  /* --- Free trial banner --- */
+  .trial-banner {
+    background: rgba(242,179,61,0.08);
+    border: 1px solid rgba(242,179,61,0.35);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-top: 16px;
+  }
+  .trial-banner .tb-label {
+    color: #F2B33D; font-size: 11px; letter-spacing: 2px;
+    font-weight: 700; margin-bottom: 6px;
+  }
+  .trial-banner p { margin: 0; font-size: 14px; color: #C4C2CF; line-height: 1.6; }
+
   /* --- Footage quality note --- */
   .atlas-tip {
     background: rgba(139,92,246,0.07);
@@ -107,6 +121,12 @@
     <a class="btn btn-primary" id="upgradeBtn" href="#" target="_blank" rel="noopener">Upgrade — $15/mo</a>
   </div>
 
+  <!-- Shown only during a free trial -->
+  <div class="trial-banner" id="trialBanner" style="display:none;">
+    <div class="tb-label">FREE TRIAL</div>
+    <p id="trialBannerText"></p>
+  </div>
+
   <div class="card" id="redeemBox" style="margin-top:16px; padding:24px; display:none;">
     <p style="margin:0 0 14px; font-size:15px; color:var(--mute);">Have a free access code?</p>
     <div style="display:flex; gap:10px;">
@@ -122,6 +142,8 @@
     <div class="stat-card">
       <div class="label">Plan status</div>
       <div class="value"><span id="planPill" class="pill">—</span></div>
+      <a href="#" id="manageBillingLink" style="display:none; font-size:12px; color:#A78BFA; text-decoration:none; margin-top:10px;">Manage billing &rsaquo;</a>
+      <div id="manageBillingHint" style="display:none; font-size:11px; color:#6E6C7C; margin-top:4px; line-height:1.4;">Update your card, view invoices, or cancel</div>
     </div>
     <div class="stat-card">
       <div class="label">Videos analyzed</div>
@@ -153,7 +175,7 @@
   <div class="list" id="latestList"></div>
 
   <!-- ===================== ATLAS CHAT ===================== -->
-  <div class="sec-label" id="chatLabel">ASK YOUR COACH</div>
+  <div class="sec-label">ASK YOUR COACH</div>
   <div class="atlas-chat-panel">
 
     <div id="atlasChatLocked" style="display:none;">
@@ -184,7 +206,7 @@
 
   </div>
 
-  <!-- ===================== EARLIER REPORTS ===================== -->
+  <!-- ===================== EARLIER UPLOADS ===================== -->
   <div class="sec-label muted" id="earlierLabel" style="display:none;">EARLIER UPLOADS</div>
   <div class="list" id="videoList"></div>
 
@@ -221,6 +243,57 @@
   }
 
   document.getElementById('upgradeBtn').href = ATLAS_CONFIG.STRIPE_PAYMENT_LINK;
+
+  // --- Manage / cancel subscription (Stripe Customer Portal) ---
+  const manageLink = document.getElementById('manageBillingLink');
+  if (isActive) {
+    manageLink.style.display = 'inline-block';
+    document.getElementById('manageBillingHint').style.display = 'block';
+    manageLink.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const original = manageLink.textContent;
+      manageLink.textContent = 'Opening…';
+
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const resp = await fetch('/api/billing-portal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken: session.access_token })
+        });
+        const out = await resp.json();
+
+        if (!resp.ok || !out.url) {
+          alert(out.error || 'Could not open billing settings.');
+          manageLink.textContent = original;
+          return;
+        }
+        window.location.href = out.url;
+      } catch (err) {
+        alert('Could not open billing settings.');
+        manageLink.textContent = original;
+      }
+    });
+  }
+
+  // --- Free trial countdown ---
+  if (profile && profile.subscription_status === 'trialing' && profile.trial_ends_at) {
+    const endsAt = new Date(profile.trial_ends_at);
+    const daysLeft = Math.max(0, Math.ceil((endsAt - new Date()) / (1000 * 60 * 60 * 24)));
+    const dateLabel = endsAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+
+    let text;
+    if (daysLeft === 0) {
+      text = `Your free trial ends today (${dateLabel}). After that your plan continues at $15/mo — cancel any time before then and you won't be charged.`;
+    } else if (daysLeft === 1) {
+      text = `1 day left in your free trial — it ends ${dateLabel}. After that your plan continues at $15/mo. Cancel any time before then and you won't be charged.`;
+    } else {
+      text = `${daysLeft} days left in your free trial — it ends ${dateLabel}. After that your plan continues at $15/mo. Cancel any time before then and you won't be charged.`;
+    }
+
+    document.getElementById('trialBannerText').textContent = text;
+    document.getElementById('trialBanner').style.display = 'block';
+  }
 
   if (!isActive) {
     document.getElementById('redeemBox').style.display = 'block';
@@ -371,9 +444,9 @@
     const all = videos || [];
     document.getElementById('videoCount').textContent = all.length;
 
-    const latestList  = document.getElementById('latestList');
-    const earlierList = document.getElementById('videoList');
-    const latestLabel = document.getElementById('latestLabel');
+    const latestList   = document.getElementById('latestList');
+    const earlierList  = document.getElementById('videoList');
+    const latestLabel  = document.getElementById('latestLabel');
     const earlierLabel = document.getElementById('earlierLabel');
 
     latestList.innerHTML = '';
@@ -385,7 +458,6 @@
       return;
     }
 
-    // Newest upload gets its own section.
     latestLabel.style.display = 'block';
     latestList.appendChild(buildRow(all[0]));
 
