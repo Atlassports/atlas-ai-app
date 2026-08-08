@@ -115,10 +115,10 @@
   <!-- Shown only if subscription is NOT active -->
   <div class="upgrade-banner" id="upgradeBanner" style="display:none;">
     <div>
-      <h3>You're not on the beta plan yet</h3>
-      <p>Unlock unlimited video analysis, workouts, and monthly reports — $15/mo, locked in for life.</p>
+      <h3 id="upgradeHeading">Start your 5-day free trial</h3>
+      <p id="upgradeCopy">Unlimited video analysis, annotated clips, and Atlas Chat. Free for 5 days, then $15/mo — locked in for life as a founding member.</p>
     </div>
-    <a class="btn btn-primary" id="upgradeBtn" href="#" target="_blank" rel="noopener">Upgrade — $15/mo</a>
+    <a class="btn btn-primary" id="upgradeBtn" href="#" target="_blank" rel="noopener">Start free trial</a>
   </div>
 
   <!-- Shown only during a free trial -->
@@ -181,8 +181,8 @@
     <div id="atlasChatLocked" style="display:none;">
       <div class="atlas-chat-locked">
         <h4>Atlas Chat</h4>
-        <p>Ask your coach anything about your report — why a score is what it is, which drill to run first, what to focus on this week. Included with the beta plan.</p>
-        <a class="btn btn-primary" id="atlasChatUpgrade" href="#" target="_blank" rel="noopener">Upgrade — $15/mo</a>
+        <p id="atlasChatLockedCopy">Ask your coach anything about your report — why a score is what it is, which drill to run first, what to focus on this week. Included free during your trial.</p>
+        <a class="btn btn-primary" id="atlasChatUpgrade" href="#" target="_blank" rel="noopener">Start free trial</a>
       </div>
     </div>
 
@@ -243,6 +243,24 @@
   }
 
   document.getElementById('upgradeBtn').href = ATLAS_CONFIG.STRIPE_PAYMENT_LINK;
+
+  // Someone who has been a Stripe customer before has already used their trial,
+  // so don't offer them one again — offer to resubscribe instead.
+  const hadSubscriptionBefore = !!(profile && profile.stripe_customer_id);
+  const ctaLabel = hadSubscriptionBefore ? 'Resubscribe — $15/mo' : 'Start free trial';
+
+  if (!isActive) {
+    document.getElementById('upgradeBtn').textContent = ctaLabel;
+    document.getElementById('atlasChatUpgrade').textContent = ctaLabel;
+
+    if (hadSubscriptionBefore) {
+      document.getElementById('upgradeHeading').textContent = 'Your plan is no longer active';
+      document.getElementById('upgradeCopy').textContent =
+        'Resubscribe to keep uploading clips and using Atlas Chat — $15/mo. Your past reports stay downloadable either way.';
+      document.getElementById('atlasChatLockedCopy').textContent =
+        'Ask your coach anything about your report — why a score is what it is, which drill to run first, what to focus on this week. Resubscribe to pick it back up.';
+    }
+  }
 
   // --- Manage / cancel subscription (Stripe Customer Portal) ---
   const manageLink = document.getElementById('manageBillingLink');
@@ -338,7 +356,7 @@
 
   if (!isActive) {
     uploadZone.classList.add('disabled');
-    uploadBtn.textContent = 'Upgrade to upload';
+    uploadBtn.textContent = hadSubscriptionBefore ? 'Resubscribe to upload' : 'Start free trial to upload';
     uploadBtn.onclick = () => window.open(ATLAS_CONFIG.STRIPE_PAYMENT_LINK, '_blank');
   } else {
     uploadBtn.onclick = () => fileInput.click();
