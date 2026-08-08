@@ -221,6 +221,8 @@
           const file = reportInput.files[0];
           if (!file) return;
 
+          const wasAlreadyProcessed = (v.status === 'processed' && !!v.report_url);
+
           const originalLabel = uploadBtn.textContent;
           uploadBtn.disabled = true;
           uploadBtn.innerHTML = '<span class="spinner"></span>';
@@ -247,9 +249,31 @@
             alert('Report uploaded, but marking it complete failed: ' + updErr.message);
             uploadBtn.disabled = false;
             uploadBtn.textContent = originalLabel;
-          } else {
-            location.reload();
+            return;
           }
+
+          // Email the player — only the FIRST time this video is completed,
+          // so replacing a report later doesn't re-notify them.
+          if (!wasAlreadyProcessed) {
+            try {
+              const { data: { session } } = await supabaseClient.auth.getSession();
+              const notifyRes = await fetch('/api/notify-report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accessToken: session.access_token, videoId: v.id })
+              });
+              const notifyOut = await notifyRes.json();
+              if (!notifyRes.ok) {
+                alert('Report saved, but the notification email failed: ' +
+                      (notifyOut.error || 'unknown error') +
+                      '\n\nThe report is live either way — you can tell the player manually.');
+              }
+            } catch (e) {
+              alert('Report saved, but the notification email failed to send. The report is live either way.');
+            }
+          }
+
+          location.reload();
         });
 
         // --- Upload / replace the annotated analysis clip ---
