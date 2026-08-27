@@ -1,0 +1,144 @@
+/* ==========================================================================
+   Auth pages — log in / sign up.
+   Loaded on top of ice.css. A split sheet: the rink on one side, the form
+   on the other. On a phone it collapses to a compact header over the form.
+   ========================================================================== */
+
+body { background: var(--ink-0); min-height: 100vh; }
+
+.auth {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  min-height: 100vh;
+}
+@media (max-width: 900px) { .auth { grid-template-columns: 1fr; } }
+
+/* ------------------------------------------------------------- LEFT: ICE */
+
+.auth-ice {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(32px, 5vw, 64px);
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(ellipse 54% 40% at 26% 14%, rgba(150,183,214,0.11), transparent 62%),
+    radial-gradient(ellipse 62% 44% at 60% 104%, rgba(28,116,216,0.13), transparent 66%),
+    linear-gradient(170deg, #05080D 0%, #070C13 46%, #03060A 100%);
+  border-right: 1px solid var(--rule);
+}
+@media (max-width: 900px) {
+  .auth-ice { border-right: 0; border-bottom: 1px solid var(--rule);
+              padding: 26px var(--gutter) 30px; }
+}
+
+.auth-marks { position: absolute; inset: 0; opacity: 0.85; }
+.auth-vig {
+  position: absolute; inset: 0;
+  background:
+    /* keeps the copy legible where it sits over the markings */
+    linear-gradient(0deg, rgba(8,8,10,0.92) 0%, rgba(8,8,10,0.45) 34%, transparent 62%),
+    radial-gradient(ellipse 90% 76% at 44% 48%, transparent 38%, rgba(8,8,10,0.8) 100%);
+}
+
+.auth-brand {
+  position: relative; z-index: 2;
+  display: flex; align-items: center; gap: 11px;
+  margin-bottom: auto;
+}
+.auth-brand img { height: 28px; width: auto; }
+.auth-brand .t {
+  font-family: var(--f-display);
+  font-size: 22px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--bone);
+}
+
+.auth-say { position: relative; z-index: 2; max-width: 22ch; }
+@media (max-width: 900px) { .auth-say { display: none; } }
+.auth-say h2 {
+  font-family: var(--f-display);
+  font-size: clamp(34px, 3.9vw, 56px);
+  text-transform: uppercase; line-height: 0.9; letter-spacing: 0.005em;
+  color: var(--bone); margin: 34px 0 18px;
+  text-shadow: -1.5px 0 0 rgba(220,59,42,0.38), 1.5px 0 0 rgba(95,168,222,0.18);
+}
+.auth-say p { font-size: 15.5px; color: var(--bone-3); max-width: 34ch; }
+
+.auth-terms {
+  position: relative; z-index: 2;
+  margin-top: 34px; padding-top: 18px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.04em;
+  color: var(--bone-4); line-height: 1.7;
+}
+.auth-terms b { color: var(--bone-2); font-weight: 700; }
+@media (max-width: 900px) { .auth-terms { display: none; } }
+
+/* ------------------------------------------------------------ RIGHT: FORM */
+
+.auth-form-wrap {
+  display: grid; place-items: center;
+  padding: clamp(32px, 5vw, 64px) var(--gutter);
+  background: var(--ink-1);
+}
+.auth-form { width: 100%; max-width: 400px; }
+
+.auth-form h1 {
+  font-family: var(--f-display);
+  font-size: clamp(32px, 3.4vw, 44px);
+  text-transform: uppercase; letter-spacing: 0.01em; line-height: 0.94;
+  color: var(--bone); margin-bottom: 12px;
+}
+.auth-form .sub { font-size: 15px; color: var(--bone-3); margin-bottom: 30px; }
+
+.fieldset { margin-bottom: 18px; }
+.fieldset label {
+  display: block; margin-bottom: 9px;
+  font-family: var(--f-mono); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--bone-4);
+}
+
+.btn-block { width: 100%; margin-top: 8px; }
+
+.form-msg {
+  display: none;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  font-size: 14px; line-height: 1.55;
+  border: 1px solid transparent;
+}
+.form-msg.show { display: block; }
+.form-msg.error {
+  color: var(--red-hot);
+  border-color: color-mix(in srgb, var(--red) 44%, transparent);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+}
+.form-msg.ok {
+  color: var(--up);
+  border-color: color-mix(in srgb, var(--up) 44%, transparent);
+  background: color-mix(in srgb, var(--up) 10%, transparent);
+}
+
+.switch-line {
+  margin-top: 26px; padding-top: 20px;
+  border-top: 1px solid var(--rule);
+  font-size: 14.5px; color: var(--bone-3);
+}
+.switch-line a { color: var(--bone); border-bottom: 1px solid var(--rule-2); }
+.switch-line a:hover { border-bottom-color: var(--red); }
+
+.back-home {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 22px;
+  font-family: var(--f-mono); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-5);
+}
+.back-home:hover { color: var(--bone-2); }
+
+.spinner {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  display: inline-block;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
