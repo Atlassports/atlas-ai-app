@@ -7,7 +7,7 @@ const DAILY_MESSAGE_LIMIT = 25;
 const VIDEOS_TABLE = "videos";
 const CHAT_TABLE = "chat_messages";
 const STORAGE_BUCKET = "reports";
-const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_MODEL = "gemini-3.6-flash";
 
 function sbHeaders(extra) {
   return Object.assign({
