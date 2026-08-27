@@ -14,14 +14,14 @@ function sbHeaders(extra) {
     {
       apikey: SERVICE_KEY,
       Authorization: "Bearer " + SERVICE_KEY,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json"
     },
     extra || {}
   );
 }
 
-async function getResponseText(res) {
-  const text = await res.text();
+async function getResponseData(response) {
+  const text = await response.text();
 
   if (!text) {
     return null;
@@ -29,7 +29,7 @@ async function getResponseText(res) {
 
   try {
     return JSON.parse(text);
-  } catch (e) {
+  } catch (error) {
     return { raw: text };
   }
 }
@@ -63,13 +63,13 @@ async function askGemini(systemPrompt, userText, pdfBase64) {
     parts.push({
       inline_data: {
         mime_type: "application/pdf",
-        data: pdfBase64,
-      },
+        data: pdfBase64
+      }
     });
   }
 
   parts.push({
-    text: userText,
+    text: userText
   });
 
   const url =
@@ -82,26 +82,26 @@ async function askGemini(systemPrompt, userText, pdfBase64) {
     system_instruction: {
       parts: [
         {
-          text: systemPrompt,
-        },
-      ],
+          text: systemPrompt
+        }
+      ]
     },
     contents: [
       {
         role: "user",
-        parts: parts,
-      },
+        parts: parts
+      }
     ],
     generationConfig: {
       temperature: 0.4,
-      maxOutputTokens: 1000,
-    },
+      maxOutputTokens: 1000
+    }
   };
 
   console.log(
-    "Calling Gemini model:",
+    "Calling Gemini:",
     GEMINI_MODEL,
-    pdfBase64 ? "with PDF" : "without PDF"
+    pdfBase64 ? "with PDF" : "text only"
   );
 
   let response;
@@ -110,18 +110,19 @@ async function askGemini(systemPrompt, userText, pdfBase64) {
     response = await fetch(url, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(requestBody)
     });
   } catch (error) {
     console.error("Gemini network error:", error);
+
     throw new Error(
       "Gemini could not be reached. Please try again in a moment."
     );
   }
 
-  const data = await getResponseText(response);
+  const data = await getResponseData(response);
 
   if (!response.ok) {
     console.error(
@@ -130,37 +131,47 @@ async function askGemini(systemPrompt, userText, pdfBase64) {
       JSON.stringify(data)
     );
 
-    const message =
+    let errorMessage = "Gemini returned HTTP " + response.status;
+
+    if (
       data &&
       data.error &&
       data.error.message
-        ? data.error.message
-        : "Gemini returned HTTP " + response.status;
+    ) {
+      errorMessage = data.error.message;
+    }
 
-    throw new Error("Gemini error: " + message);
+    throw new Error(
+      "Gemini error: " + errorMessage
+    );
   }
 
-  const reply =
+  let reply = "";
+
+  if (
     data &&
     data.candidates &&
     data.candidates[0] &&
     data.candidates[0].content &&
     data.candidates[0].content.parts
-      ? data.candidates[0].content.parts
-          .map(function (part) {
-            return part.text || "";
-          })
-          .join("")
-          .trim()
-      : "";
+  ) {
+    reply = data.candidates[0].content.parts
+      .map(function(part) {
+        return part.text || "";
+      })
+      .join("")
+      .trim();
+  }
 
   if (!reply) {
     console.error(
-      "Gemini returned no usable text:",
+      "Gemini returned no text:",
       JSON.stringify(data)
     );
 
-    throw new Error("Gemini returned an empty response.");
+    throw new Error(
+      "Gemini returned an empty response."
+    );
   }
 
   return reply;
@@ -170,7 +181,11 @@ async function downloadReportPdf(row) {
   const ref = String(row.report_url || "").trim();
 
   if (!ref) {
-    console.error("Report has no report_url. Row:", row.id);
+    console.error(
+      "Report has no report_url:",
+      row.id
+    );
+
     return null;
   }
 
@@ -180,25 +195,33 @@ async function downloadReportPdf(row) {
     candidates.push(ref);
   } else {
     if (row.id) {
-      candidates.push(row.id + "/" + ref + "_report.pdf");
+      candidates.push(
+        row.id + "/" + ref + "_report.pdf"
+      );
     }
 
     if (row.user_id) {
-      candidates.push(row.user_id + "/" + ref + "_report.pdf");
+      candidates.push(
+        row.user_id + "/" + ref + "_report.pdf"
+      );
     }
 
     candidates.push(ref);
   }
 
-  const uniqueCandidates = Array.from(new Set(candidates));
+  const uniqueCandidates =
+    Array.from(new Set(candidates));
 
-  console.log("Report paths to try:", uniqueCandidates);
+  console.log(
+    "Trying report paths:",
+    uniqueCandidates
+  );
 
   for (const path of uniqueCandidates) {
     try {
       const encodedPath = path
         .split("/")
-        .map(function (part) {
+        .map(function(part) {
           return encodeURIComponent(part);
         })
         .join("/");
@@ -213,29 +236,37 @@ async function downloadReportPdf(row) {
       const response = await fetch(url, {
         headers: {
           apikey: SERVICE_KEY,
-          Authorization: "Bearer " + SERVICE_KEY,
-        },
+          Authorization: "Bearer " + SERVICE_KEY
+        }
       });
 
       if (response.ok) {
-        const buffer = await response.arrayBuffer();
+        const buffer =
+          await response.arrayBuffer();
 
         console.log(
-          "Report downloaded successfully:",
+          "Report downloaded:",
           path,
           "bytes:",
           buffer.byteLength
         );
 
         if (buffer.byteLength === 0) {
-          console.error("Report file is empty:", path);
+          console.error(
+            "Report file is empty:",
+            path
+          );
+
           continue;
         }
 
-        return Buffer.from(buffer).toString("base64");
+        return Buffer
+          .from(buffer)
+          .toString("base64");
       }
 
-      const errorText = await response.text();
+      const errorText =
+        await response.text();
 
       console.error(
         "Report path failed:",
@@ -245,6 +276,7 @@ async function downloadReportPdf(row) {
         "response:",
         errorText.slice(0, 500)
       );
+
     } catch (error) {
       console.error(
         "Error downloading report:",
@@ -257,47 +289,51 @@ async function downloadReportPdf(row) {
   return null;
 }
 
-const EXTRACT_PROMPT = `
-You are reading a hockey skating-analysis report PDF for Atlas.
-
-Extract all information a hockey coach would need to discuss the report with
-the player.
-
-Include:
-
-- Overall score
-- Every metric name and score
-- Strengths and their descriptions
-- Areas to improve
-- Descriptions of every area to improve
-- Every drill listed for each area to improve
-- The 3-week focus plan
-- All raw measurements
-- Angles
-- Stride counts
-- Timing measurements
-- Any other numerical measurements
-- Tracking information
-- Notes
-- Caveats
-- Any warnings about the quality of the video or tracking
-
-Preserve all numbers accurately.
-
-Write a clean, structured plain-text summary.
-
-Do not add coaching advice.
-Do not interpret the results.
-Do not invent anything.
-Do not omit information.
-`.trim();
+const EXTRACT_PROMPT = [
+  "You are reading a hockey skating-analysis report PDF for Atlas.",
+  "",
+  "Extract ALL information that a hockey coach would need to discuss the report with the player.",
+  "",
+  "Include:",
+  "- Overall score",
+  "- Every metric name and score",
+  "- Strengths and their descriptions",
+  "- Areas to improve",
+  "- Descriptions of every area to improve",
+  "- Every drill listed for each area to improve",
+  "- The 3-week focus plan",
+  "- All raw measurements",
+  "- Angles",
+  "- Stride counts",
+  "- Timing measurements",
+  "- Any other numerical measurements",
+  "- Tracking information",
+  "- Notes",
+  "- Caveats",
+  "- Any warnings about the quality of the video or tracking",
+  "",
+  "Preserve all numbers accurately.",
+  "",
+  "Write a clean, structured plain-text summary.",
+  "",
+  "Do not add coaching advice.",
+  "Do not interpret the results.",
+  "Do not invent anything.",
+  "Do not omit information.",
+  ""
+].join("\n");
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Origin",
+    "*"
+  );
+
   res.setHeader(
     "Access-Control-Allow-Methods",
     "POST, OPTIONS"
   );
+
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Content-Type, Authorization"
@@ -309,7 +345,7 @@ export default async function handler(req, res) {
 
   if (req.method !== "POST") {
     return res.status(405).json({
-      error: "Method not allowed",
+      error: "Method not allowed"
     });
   }
 
@@ -330,16 +366,21 @@ export default async function handler(req, res) {
 
     if (!accessToken || !message) {
       return res.status(400).json({
-        error: "Missing accessToken or message",
+        error:
+          "Missing accessToken or message"
       });
     }
 
     if (message.length > 4000) {
       return res.status(400).json({
         error:
-          "Message is too long. Please keep it under 4,000 characters.",
+          "Message is too long. Please keep it under 4,000 characters."
       });
     }
+
+    console.log(
+      "Starting Atlas chat request."
+    );
 
     // ---------------------------------------------------
     // 1. Authenticate user
@@ -350,8 +391,9 @@ export default async function handler(req, res) {
       {
         headers: {
           apikey: SERVICE_KEY,
-          Authorization: "Bearer " + accessToken,
-        },
+          Authorization:
+            "Bearer " + accessToken
+        }
       }
     );
 
@@ -363,33 +405,44 @@ export default async function handler(req, res) {
       );
 
       return res.status(401).json({
-        error: "Not logged in",
+        error: "Not logged in"
       });
     }
 
-    const user = await getResponseText(userResponse);
+    const user =
+      await getResponseData(userResponse);
 
     if (!user || !user.id) {
       console.error(
-        "Supabase returned invalid user:",
+        "Invalid Supabase user response:",
         JSON.stringify(user)
       );
 
       return res.status(401).json({
-        error: "Could not identify player",
+        error:
+          "Could not identify player"
       });
     }
 
     const userId = user.id;
 
-    console.log("Authenticated user:", userId);
+    console.log(
+      "Authenticated user:",
+      userId
+    );
 
     // ---------------------------------------------------
     // 2. Daily message limit
     // ---------------------------------------------------
 
     const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+
+    todayStart.setHours(
+      0,
+      0,
+      0,
+      0
+    );
 
     const countUrl =
       SUPABASE_URL +
@@ -398,17 +451,23 @@ export default async function handler(req, res) {
       "?user_id=eq." +
       encodeURIComponent(userId) +
       "&created_at=gte." +
-      encodeURIComponent(todayStart.toISOString()) +
+      encodeURIComponent(
+        todayStart.toISOString()
+      ) +
       "&select=id";
 
-    const countResponse = await fetch(countUrl, {
-      headers: sbHeaders(),
-    });
+    const countResponse =
+      await fetch(countUrl, {
+        headers: sbHeaders()
+      });
 
     let usedCount = 0;
 
     if (countResponse.ok) {
-      const messages = await getResponseText(countResponse);
+      const messages =
+        await getResponseData(
+          countResponse
+        );
 
       if (Array.isArray(messages)) {
         usedCount = messages.length;
@@ -421,13 +480,15 @@ export default async function handler(req, res) {
       );
     }
 
-    if (usedCount >= DAILY_MESSAGE_LIMIT) {
+    if (
+      usedCount >= DAILY_MESSAGE_LIMIT
+    ) {
       return res.status(429).json({
         error:
           "You've used all " +
           DAILY_MESSAGE_LIMIT +
           " messages for today. Resets at midnight.",
-        remaining: 0,
+        remaining: 0
       });
     }
 
@@ -445,9 +506,10 @@ export default async function handler(req, res) {
       "&order=created_at.desc" +
       "&limit=1";
 
-    const reportResponse = await fetch(reportUrl, {
-      headers: sbHeaders(),
-    });
+    const reportResponse =
+      await fetch(reportUrl, {
+        headers: sbHeaders()
+      });
 
     if (!reportResponse.ok) {
       console.error(
@@ -457,36 +519,42 @@ export default async function handler(req, res) {
       );
 
       return res.status(500).json({
-        error: "Could not load your skating report.",
+        error:
+          "Could not load your skating report."
       });
     }
 
-    const rows = await getResponseText(reportResponse);
+    const rows =
+      await getResponseData(
+        reportResponse
+      );
 
     const row =
-      Array.isArray(rows) && rows.length > 0
+      Array.isArray(rows) &&
+      rows.length > 0
         ? rows[0]
         : null;
 
     if (!row) {
       return res.status(404).json({
         error:
-          "You don't have a finished report yet — upload a clip and we'll analyze it.",
+          "You don't have a finished report yet — upload a clip and we'll analyze it."
       });
     }
 
-    console.log("Report row:", {
-      id: row.id,
-      user_id: row.user_id,
-      report_url: row.report_url,
-      has_report_data: !!row.report_data,
-    });
+    console.log(
+      "Found report:",
+      row.id,
+      "Cached:",
+      !!row.report_data
+    );
 
     // ---------------------------------------------------
-    // 4. Get cached report or read PDF
+    // 4. Get report text
     // ---------------------------------------------------
 
-    let reportText = row.report_data;
+    let reportText =
+      row.report_data;
 
     if (
       !reportText ||
@@ -494,7 +562,7 @@ export default async function handler(req, res) {
       !reportText.trim()
     ) {
       console.log(
-        "No cached report data. Downloading PDF..."
+        "No cached report. Downloading PDF."
       );
 
       const pdfBase64 =
@@ -502,34 +570,38 @@ export default async function handler(req, res) {
 
       if (!pdfBase64) {
         console.error(
-          "Could not find PDF for report:",
+          "Could not find report PDF:",
           row.id
         );
 
         return res.status(404).json({
           error:
-            "I couldn't open your report file. Please email us and we'll help you out.",
+            "I couldn't open your report file. Please email us and we'll help you out."
         });
       }
 
       console.log(
-        "Sending PDF to Gemini for extraction..."
+        "Sending PDF to Gemini for extraction."
       );
 
-      reportText = await askGemini(
-        EXTRACT_PROMPT,
-        "Extract the complete skating-analysis report.",
-        pdfBase64
-      );
+      reportText =
+        await askGemini(
+          EXTRACT_PROMPT,
+          "Extract the complete skating-analysis report.",
+          pdfBase64
+        );
 
       if (!reportText) {
         return res.status(500).json({
           error:
-            "I couldn't read your report. Please email us and we'll help you out.",
+            "I couldn't read your report. Please email us and we'll help you out."
         });
       }
 
-      // Cache report text.
+      // -------------------------------------------------
+      // Cache extracted report
+      // -------------------------------------------------
+
       const cacheUrl =
         SUPABASE_URL +
         "/rest/v1/" +
@@ -537,32 +609,32 @@ export default async function handler(req, res) {
         "?id=eq." +
         encodeURIComponent(row.id);
 
-      const cacheResponse = await fetch(cacheUrl, {
-        method: "PATCH",
-        headers: sbHeaders({
-          Prefer: "return=minimal",
-        }),
-        body: JSON.stringify({
-          report_data: reportText,
-        }),
-      });
+      const cacheResponse =
+        await fetch(cacheUrl, {
+          method: "PATCH",
+          headers: sbHeaders({
+            Prefer: "return=minimal"
+          }),
+          body: JSON.stringify({
+            report_data: reportText
+          })
+        });
 
       if (!cacheResponse.ok) {
         console.error(
-          "Could not cache report_data:",
+          "Could not cache report:",
           cacheResponse.status,
           await cacheResponse.text()
         );
-
-        // Do not fail the chat. We still have reportText.
       } else {
         console.log(
-          "Report successfully cached."
+          "Report cached successfully."
         );
       }
+
     } else {
       console.log(
-        "Using cached report_data."
+        "Using cached report."
       );
     }
 
@@ -572,7 +644,7 @@ export default async function handler(req, res) {
     ) {
       return res.status(500).json({
         error:
-          "I couldn't read your report. Please email us and we'll help you out.",
+          "I couldn't read your report. Please email us and we'll help you out."
       });
     }
 
@@ -580,80 +652,77 @@ export default async function handler(req, res) {
     // 5. Ask Atlas AI coach
     // ---------------------------------------------------
 
-    const coachPrompt = `
-You are the Atlas AI hockey coach, talking one-on-one with a player about
-their own skating analysis.
-
-Your job is to help the player understand and improve their skating based
-ONLY on the report provided below.
-
-VOICE:
-- Direct
-- Coach-like
-- Encouraging
-- Plain language
-- Not corporate
-- Not overly technical
-
-RESPONSE STYLE:
-- Lead with what's working when relevant.
-- Then address what needs improvement.
-- Be specific.
-- Every weakness you identify should include a concrete on-ice drill when
-  the report provides one.
-- Keep normal replies around 2-4 sentences.
-- If the player asks for more detail, provide more detail.
-- Talk directly to the player using "you."
-
-ACCURACY:
-- Only use information contained in the report.
-- Never invent scores.
-- Never invent measurements.
-- Never invent strengths.
-- Never invent weaknesses.
-- Never invent drills.
-- Never claim something happened if the report does not say it.
-- If the report does not contain enough information to answer a question,
-  say so clearly.
-- Do not pretend to have analyzed video beyond what is contained in the
-  report.
-
-PLAYER REPORT:
-----------------
-${reportText}
-----------------
-`.trim();
+    const coachPrompt = [
+      "You are the Atlas AI hockey coach, talking one-on-one with a player about their own skating analysis.",
+      "",
+      "Your job is to help the player understand and improve their skating based ONLY on the report provided below.",
+      "",
+      "VOICE:",
+      "- Direct",
+      "- Coach-like",
+      "- Encouraging",
+      "- Plain language",
+      "- Not corporate",
+      "- Not overly technical",
+      "",
+      "RESPONSE STYLE:",
+      "- Lead with what's working when relevant.",
+      "- Then address what needs improvement.",
+      "- Be specific.",
+      "- Every weakness you identify should include a concrete on-ice drill when the report provides one.",
+      "- Keep normal replies around 2-4 sentences.",
+      "- If the player asks for more detail, provide more detail.",
+      "- Talk directly to the player using 'you'.",
+      "",
+      "ACCURACY:",
+      "- Only use information contained in the report.",
+      "- Never invent scores.",
+      "- Never invent measurements.",
+      "- Never invent strengths.",
+      "- Never invent weaknesses.",
+      "- Never invent drills.",
+      "- Never claim something happened if the report does not say it.",
+      "- If the report does not contain enough information to answer a question, say so clearly.",
+      "- Do not pretend to have analyzed video beyond what is contained in the report.",
+      "",
+      "PLAYER REPORT:",
+      "----------------",
+      reportText,
+      "----------------"
+    ].join("\n");
 
     console.log(
-      "Sending player question to Gemini..."
+      "Sending player question to Gemini."
     );
 
-    const reply = await askGemini(
-      coachPrompt,
-      message,
-      null
-    );
+    const reply =
+      await askGemini(
+        coachPrompt,
+        message,
+        null
+      );
 
     // ---------------------------------------------------
     // 6. Save conversation
     // ---------------------------------------------------
 
-    const logResponse = await fetch(
-      SUPABASE_URL +
-        "/rest/v1/" +
-        CHAT_TABLE,
-      {
-        method: "POST",
-        headers: sbHeaders({
-          Prefer: "return=minimal",
-        }),
-        body: JSON.stringify({
-          user_id: userId,
-          message: message,
-          reply: reply,
-        }),
-      }
-    );
+    const logResponse =
+      await fetch(
+        SUPABASE_URL +
+          "/rest/v1/" +
+          CHAT_TABLE,
+        {
+          method: "POST",
+          headers: sbHeaders({
+            Prefer: "return=minimal"
+          }),
+          body: JSON.stringify({
+            user_id: userId,
+            message: message,
+            reply: reply
+          })
+        }
+      );
 
     if (!logResponse.ok) {
       console.error(
@@ -661,14 +730,14 @@ ${reportText}
         logResponse.status,
         await logResponse.text()
       );
-
-      // IMPORTANT:
-      // The AI response still worked, so don't turn this
-      // into a 500 error.
+    } else {
+      console.log(
+        "Chat message logged."
+      );
     }
 
     // ---------------------------------------------------
-    // 7. Return successful response
+    // 7. Return response
     // ---------------------------------------------------
 
     return res.status(200).json({
@@ -676,7 +745,12 @@ ${reportText}
         reply ||
         "Sorry, I couldn't come up with a response. Try rephrasing?",
       remaining:
-        DAILY_MESSAGE_LIMIT - usedCount - 1,
+        Math.max(
+          0,
+          DAILY_MESSAGE_LIMIT -
+            usedCount -
+            1
+        )
     });
 
   } catch (error) {
@@ -702,7 +776,7 @@ ${reportText}
       error:
         error && error.message
           ? error.message
-          : "Something went wrong.",
+          : "Something went wrong."
     });
   }
 }
