@@ -3,44 +3,75 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Log In — Atlas AI</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/atlas.css">
+<title>Log in — Atlas</title>
+<link rel="icon" href="/img/atlas-mark.png" type="image/png">
+<link rel="preload" href="/fonts/anton-normal-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/publicsans-normal-300_800.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/ice.css">
+<link rel="stylesheet" href="/css/auth.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<nav class="nav">
-  <div class="brand">
-    <img src="/img/atlas-mark.png" alt="Atlas AI">
-    ATLAS AI
-  </div>
-  <div class="nav-links">
-    <a href="/index.html">Home</a>
-  </div>
-</nav>
+<div class="auth">
 
-<div class="auth-shell">
-  <div class="auth-card card">
-    <h1>Welcome back</h1>
-    <p class="sub">Log in to your Atlas AI dashboard.</p>
+  <!-- the sheet -->
+  <div class="auth-ice tex-ice">
+    <svg class="auth-marks" viewBox="0 0 640 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <line x1="-40" y1="215" x2="680" y2="215" stroke="#34343C" stroke-width="14" opacity="0.30"/>
+      <line x1="-40" y1="685" x2="680" y2="685" stroke="#34343C" stroke-width="14" opacity="0.30"/>
+      <line x1="-40" y1="450" x2="680" y2="450" stroke="#DC3B2A" stroke-width="4" opacity="0.30"/>
+      <circle cx="320" cy="450" r="150" stroke="#34343C" stroke-width="2.5" fill="none" opacity="0.34"/>
+      <circle cx="320" cy="450" r="7" fill="#DC3B2A" opacity="0.75"/>
+      <g stroke="#DC3B2A" stroke-width="2.5" fill="none" opacity="0.26">
+        <circle cx="96" cy="215" r="76"/><circle cx="544" cy="215" r="76"/>
+        <circle cx="96" cy="685" r="76"/><circle cx="544" cy="685" r="76"/>
+      </g>
+      <g fill="#DC3B2A" opacity="0.55">
+        <circle cx="96" cy="215" r="6"/><circle cx="544" cy="215" r="6"/>
+        <circle cx="96" cy="685" r="6"/><circle cx="544" cy="685" r="6"/>
+      </g>
+    </svg>
+    <div class="auth-vig"></div>
 
-    <div id="msg" class="form-msg"></div>
+    <a href="/" class="auth-brand">
+      <img src="/img/atlas-mark.png" alt="">
+      <span class="t">ATLAS</span>
+    </a>
 
-    <form id="loginForm">
-      <div class="field">
-        <label for="email">Email</label>
-        <input type="email" id="email" required autocomplete="email" placeholder="you@example.com">
+    <div class="auth-say">
+      <h2>Back on the ice.</h2>
+      <p>Your reports, your clips and your coach are where you left them.</p>
+      <div class="auth-terms">
+        <b>Free for 5 days</b>, then $15/mo · unlimited clips<br>
+        Card required — cancel before day 5 and you won't be charged
       </div>
-      <div class="field">
-        <label for="password">Password</label>
-        <input type="password" id="password" required autocomplete="current-password" placeholder="Your password">
-      </div>
-      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Log in</button>
-    </form>
+    </div>
+  </div>
 
-    <p class="switch-line">New to Atlas? <a href="/signup.html">Create an account</a></p>
+  <!-- the form -->
+  <div class="auth-form-wrap">
+    <div class="auth-form">
+      <h1>Welcome back</h1>
+      <p class="sub">Log in to your Atlas dashboard.</p>
+
+      <div id="msg" class="form-msg"></div>
+
+      <form id="loginForm">
+        <div class="fieldset">
+          <label for="email">Email</label>
+          <input class="field" type="email" id="email" required autocomplete="email" placeholder="you@example.com">
+        </div>
+        <div class="fieldset">
+          <label for="password">Password</label>
+          <input class="field" type="password" id="password" required autocomplete="current-password"  placeholder="Your password">
+        </div>
+        <button type="submit" class="btn btn-red btn-block" id="submitBtn">Log in</button>
+      </form>
+
+      <p class="switch-line">New to Atlas? <a href="/signup.html">Create an account</a></p>
+      <a href="/" class="back-home">&larr; Back to site</a>
+    </div>
   </div>
 </div>
 

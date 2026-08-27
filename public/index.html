@@ -4,1305 +4,1079 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Atlas — AI Hockey Coach</title>
-<meta name="description" content="Upload a clip of your skating, your shot, or your off-ice workout. Atlas breaks down your mechanics frame by frame and hands back your numbers, an annotated video, and a coach you can ask questions.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<meta name="description" content="Send a hockey clip. Atlas measures the details a coach sees — knee bend, release time, weight transfer — and hands back your numbers, an annotated video, and the next drill.">
+<link rel="icon" href="/img/atlas-mark.png" type="image/png">
+<link rel="preload" href="/fonts/anton-normal-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/publicsans-normal-300_800.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/ice.css">
 <style>
-  :root {
-    --ink: #060608;
-    --ink-2: #0c0b14;
-    --ink-3: #17131f;
-    --ice: #8B5CF6;
-    --ice-bright: #A78BFA;
-    --ice-pale: #B794F6;
-    --rink: #34D399;
-    --rink-deep: #10B981;
-    --amber: #F2B33D;
-    --white: #FFFFFF;
-    --body: #C4C2CF;
-    --muted: #8A879A;
-    --line: rgba(139, 92, 246, 0.14);
-    --line-2: rgba(139, 92, 246, 0.28);
-    --glow: rgba(139, 92, 246, 0.45);
-  }
+/* ==========================================================================
+   Landing page composition. Reusable pieces live in ice.css.
+   ========================================================================== */
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+/* ------------------------------------------------------------------- NAV */
 
-  html { scroll-behavior: smooth; }
+#nav {
+  position: sticky; top: 0; z-index: 90;
+  background: rgba(8,8,10,0.6);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-bottom: 1px solid transparent;
+  transition: background var(--t-base) ease, border-color var(--t-base) ease;
+}
+#nav.stuck { background: rgba(8,8,10,0.94); border-bottom-color: var(--rule); }
+.nav-in { max-width: var(--shell); margin: 0 auto; padding: 13px var(--gutter); display: flex; align-items: center; gap: 24px; }
+.mark { display: flex; align-items: center; gap: 10px; }
+.mark img { height: 25px; width: auto; }
+.mark span { font-family: var(--f-display); font-size: 23px; letter-spacing: 0.06em; color: var(--bone); text-transform: uppercase; }
+.nav-links { display: flex; gap: 24px; margin-left: auto; }
+.nav-links a {
+  font-family: var(--f-mono); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-4);
+  padding: 5px 0; position: relative; transition: color var(--t-fast) ease;
+}
+.nav-links a::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: var(--red); transform: scaleX(0); transform-origin: left;
+  transition: transform var(--t-base) var(--e-out);
+}
+.nav-links a:hover { color: var(--bone); }
+.nav-links a:hover::after { transform: scaleX(1); }
+@media (max-width: 900px) { .nav-links { display: none; } }
+.nav-in > .btn { margin-left: auto; }
+.nav-links ~ .btn { margin-left: 0; }
 
-  body {
-    font-family: 'Barlow', sans-serif;
-    background: var(--ink);
-    color: var(--white);
-    line-height: 1.6;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-  }
+/* ------------------------------------------------------------------ HERO */
 
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 60% 50% at 75% -5%, rgba(139,92,246,0.18), transparent 60%),
-      radial-gradient(ellipse 50% 40% at 10% 10%, rgba(52,211,153,0.08), transparent 55%),
-      linear-gradient(180deg, #060608 0%, #050507 100%);
-    z-index: -2;
-  }
+.hero { position: relative; overflow: hidden; }
+.hero-media { position: absolute; inset: 0; z-index: 0; }
+.hero-media .plate { position: absolute; inset: -6% 0; background: transparent; }
+.hero-plate:not(:has(img))::after { display: none; }
+.hero-media .plate > img {
+  filter: grayscale(0.2) contrast(1.06) brightness(0.78);
+  object-position: left center;
+  transform: scale(1.02);
+}
+@media (max-width: 900px) {
+  .hero-media .plate > img { object-position: 58% center; }
+}
+.hero-in {
+  position: relative; z-index: 3;
+  max-width: var(--shell); margin: 0 auto; padding: clamp(56px, 9vh, 108px) var(--gutter) 0;
+  min-height: min(88vh, 860px);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.hero h1 { margin: 20px 0 26px; }
+.hero .lede { margin-bottom: 32px; }
+.hero-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.hero-terms {
+  font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--bone-4);
+}
 
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(139,92,246,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(139,92,246,0.03) 1px, transparent 1px);
-    background-size: 64px 64px;
-    z-index: -1;
-    mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black, transparent 80%);
-    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black, transparent 80%);
-  }
 
-  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 28px; }
+/* tracking rings drawn onto the skater */
+@keyframes ringPulse { 0%,100% { opacity: 0.25; } 50% { opacity: 0.7; } }
 
-  a { color: inherit; }
-  :focus-visible {
-    outline: 2px solid var(--ice-bright);
-    outline-offset: 3px;
-    border-radius: 6px;
-  }
+.hero-badge {
+  position: absolute; top: 26px; left: var(--gutter); z-index: 4;
+  font-family: var(--f-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--bone-5);
+}
+.hero-badge i { font-style: normal; color: var(--red); opacity: 0.7; }
+@media (max-width: 900px) { .hero-badge { display: none; } }
 
-  /* ---------- SCROLL REVEAL ---------- */
-  .rv { opacity: 0; transform: translateY(18px); transition: opacity 0.7s cubic-bezier(.2,.7,.3,1), transform 0.7s cubic-bezier(.2,.7,.3,1); }
-  .rv.in { opacity: 1; transform: none; }
 
-  /* ---------- NAV ---------- */
-  nav {
-    position: sticky; top: 0; z-index: 100;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    background: rgba(5, 5, 7, 0.6);
-    border-bottom: 1px solid transparent;
-    transition: background 0.3s, border-color 0.3s;
-  }
-  nav.stuck { background: rgba(5,5,7,0.9); border-bottom-color: var(--line); }
-  .nav-inner {
-    max-width: 1140px; margin: 0 auto; padding: 15px 28px;
-    display: flex; align-items: center; gap: 20px;
-  }
-  .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
-  .brand-name {
-    font-family: 'Archivo Black', sans-serif; font-weight: 800;
-    font-size: 21px; letter-spacing: -0.01em;
-  }
-  .brand-name span { color: var(--ice); }
-  .nav-links { display: flex; gap: 28px; margin-left: auto; }
-  .nav-links a {
-    font-size: 14.5px; font-weight: 500; color: var(--muted);
-    text-decoration: none; transition: color 0.2s;
-  }
-  .nav-links a:hover { color: var(--white); }
-  @media (max-width: 800px){ .nav-links { display: none; } }
-  .nav-cta {
-    font-family: 'Barlow', sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.08em; font-size: 13px;
-    color: var(--ink); background: var(--rink);
-    border: none; padding: 11px 18px; border-radius: 8px;
-    cursor: pointer; text-decoration: none; transition: all 0.2s;
-    white-space: nowrap;
-  }
-  .nav-links + .nav-cta { margin-left: 28px; }
-  .nav-inner > .nav-cta { margin-left: auto; }
-  .nav-links ~ .nav-cta { margin-left: 0; }
-  .nav-cta:hover { background: var(--white); box-shadow: 0 0 28px rgba(52,211,153,0.4); }
+/* ------------------------------------------------------------- THE RAIL */
 
-  /* ---------- HERO ---------- */
-  .hero { padding: 64px 0 20px; position: relative; overflow: hidden; }
-  .hero-grid {
-    display: grid; grid-template-columns: 1.02fr 0.98fr;
-    grid-template-areas: "lede stage" "rest stage";
-    grid-template-rows: auto auto;
-    column-gap: 40px; row-gap: 24px; align-content: center;
-  }
-  .hero-lede { grid-area: lede; align-self: end; }
-  .hero-rest { grid-area: rest; align-self: start; }
-  .hero-stage { grid-area: stage; align-self: center; margin-right: -11%; }
-  @media (max-width: 940px){
-    .hero { padding: 44px 0 24px; }
-    .hero-grid {
-      grid-template-columns: 1fr;
-      grid-template-areas: "lede" "stage" "rest";
-      row-gap: 26px;
-    }
-    .hero-lede, .hero-rest, .hero-stage { align-self: auto; }
-    .hero-stage { margin-right: 0; width: 108%; margin-left: -4%; }
-  }
+#rail {
+  position: fixed; top: 0; right: 0; bottom: 0; width: var(--rail-w);
+  z-index: 80; pointer-events: none;
+  background: linear-gradient(180deg, rgba(8,9,12,0.82) 0%, rgba(5,6,9,0.9) 100%);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border-left: 1px solid var(--rule);
+  display: flex; flex-direction: column; padding: 20px 18px 18px;
+}
+@media (max-width: 1300px) { #rail { display: none; } }
+@media (min-width: 1301px) { body { padding-right: var(--rail-w); } }
 
-  .eyebrow {
-    display: inline-flex; align-items: center; gap: 9px;
-    font-family: 'Barlow', sans-serif; font-size: 12.5px;
-    letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--ice-bright);
-    border: 1px solid var(--line); border-radius: 100px;
-    padding: 7px 15px; margin-bottom: 24px;
-    background: rgba(139,92,246,0.06);
-  }
-  @media (max-width: 460px){
-    .eyebrow { font-size: 11px; letter-spacing: 0.1em; padding: 6px 13px; }
-    .btn-primary, .btn-ghost { flex: 1 1 100%; }
-  }
-  .pulse {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--rink); box-shadow: 0 0 10px var(--rink);
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+.rail-hd { display: flex; align-items: baseline; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); margin-bottom: 14px; }
+.rail-hd .t { font-family: var(--f-display); font-size: 15px; text-transform: uppercase; color: var(--bone-2); letter-spacing: 0.05em; }
+.rail-hd .c { margin-left: auto; font-family: var(--f-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em; color: var(--bone-4); }
 
-  h1.hero-title {
-    font-family: 'Archivo Black', sans-serif; font-weight: 900;
-    font-size: clamp(38px, 5.4vw, 66px); line-height: 0.96;
-    letter-spacing: -0.03em; max-width: 13ch;
-    margin-bottom: 0;
-  }
-  h1.hero-title em {
-    font-style: normal;
-    background: linear-gradient(120deg, var(--ice-bright), var(--rink));
-    -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  .hero-sub {
-    font-size: 17px; color: var(--body); max-width: 46ch;
-    margin-bottom: 26px; line-height: 1.6;
-  }
-  .hero-sub b { color: var(--white); font-weight: 600; }
-  .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-  .btn-primary {
-    font-family: 'Barlow', sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.05em; font-size: 15px;
-    color: var(--ink); background: var(--rink);
-    border: none; padding: 16px 23px; border-radius: 10px; text-align: center;
-    cursor: pointer; text-decoration: none; transition: all 0.2s;
-    box-shadow: 0 8px 30px rgba(52,211,153,0.25);
-  }
-  .btn-primary:hover { background: var(--rink-deep); transform: translateY(-2px); box-shadow: 0 12px 36px rgba(52,211,153,0.4); }
-  .btn-ghost {
-    font-family: 'Barlow', sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.05em; font-size: 15px;
-    color: var(--white); background: transparent;
-    border: 1px solid var(--line-2); padding: 16px 21px; border-radius: 10px; text-align: center;
-    cursor: pointer; text-decoration: none; transition: all 0.2s;
-  }
-  .btn-ghost:hover { border-color: var(--ice); background: rgba(139,92,246,0.08); }
+.rail-ice { flex: 1; min-height: 0; display: grid; place-items: center; }
+.rail-ice svg { height: 100%; width: auto; max-height: 430px; }
 
-  .trial-line {
-    margin-top: 18px; font-size: 13.5px; color: var(--muted);
-    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
-  }
-  .trial-line b { color: var(--white); font-weight: 600; }
-  .trial-sep { color: var(--line-2); }
-  @media (max-width: 700px){ .trial-sep { display: none; } }
+/* goal lamp — dark until the puck goes in */
+.lamp { fill: #3A1512; transition: fill var(--t-base) ease; }
+#rail.scored .lamp { fill: var(--red-hot); }
+.lamp-glow { opacity: 0; transition: opacity var(--t-base) ease; }
+#rail.scored .lamp-glow { opacity: 1; }
+.goal-word {
+  font-family: var(--f-display); font-size: 15px; fill: var(--red-hot);
+  text-anchor: middle; text-transform: uppercase; opacity: 0;
+  transition: opacity var(--t-base) ease;
+}
+#rail.scored .goal-word { opacity: 1; }
 
-  /* ---------- ATHLETE ---------- */
-  .hero-figure { position: relative; }
-  .fig-glow {
-    position: absolute; left: 6%; top: 4%; width: 88%; height: 88%;
-    background: radial-gradient(ellipse 50% 46% at 52% 48%, rgba(139,92,246,0.30), transparent 68%);
-    filter: blur(28px); pointer-events: none;
-  }
-  .athlete {
-    position: relative; display: block; width: 100%; height: auto;
-    will-change: transform;
-  }
-  .fig-scan {
-    position: absolute; inset: 0; pointer-events: none; z-index: 2;
-    -webkit-mask-image: url(/img/athlete.png); mask-image: url(/img/athlete.png);
-    -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
-    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-    background: linear-gradient(180deg,
-      transparent 45.5%, rgba(139,92,246,0.10) 48.6%,
-      rgba(196,181,253,0.20) 49.7%, rgba(52,211,153,0.17) 50.4%,
-      rgba(139,92,246,0.07) 52%, transparent 55%);
-    background-size: 100% 300%; background-position-y: 0%;
-    mix-blend-mode: screen; will-change: background-position;
-  }
-  .track {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    pointer-events: none; z-index: 3;
-  }
-  .hud-chip {
-    position: absolute; z-index: 3;
-    background: rgba(10,9,17,0.72);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--line-2); border-radius: 12px;
-    padding: 11px 15px; display: grid; gap: 2px;
-    box-shadow: 0 18px 40px -22px rgba(0,0,0,0.9);
-    will-change: transform;
-  }
-  .hc-k { font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-  .hc-v { font-family: 'Archivo Black', sans-serif; font-size: 25px; line-height: 1; color: #fff; }
-  .hc-v i { font-style: normal; font-size: 15px; color: var(--muted); }
-  .hc-tag {
-    justify-self: start; margin-top: 4px; font-size: 10px; font-weight: 700;
-    letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; border-radius: 100px;
-  }
-  .hc-tag.good { color: var(--rink); background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3); }
-  .hc-tag.warn { color: var(--amber); background: rgba(242,179,61,0.10); border: 1px solid rgba(242,179,61,0.3); }
-  .hc-a { left: -2%;  top: 22%; }
-  .hc-b { right: 2%;  top: 58%; }
-  @media (max-width: 640px){
-    .hud-chip { padding: 8px 11px; border-radius: 10px; }
-    .hc-v { font-size: 19px; }
-    .hc-k { font-size: 9px; }
-    .hc-tag { font-size: 8.5px; padding: 2px 6px; }
-    .hc-a { left: -3%; top: 16%; }
-    .hc-b { right: -2%; top: 60%; }
-  }
+.rail-ft { padding-top: 14px; border-top: 1px solid var(--rule); }
+.rail-ft .meta { font-family: var(--f-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--red); margin-bottom: 7px; }
+.rail-ft .name { font-family: var(--f-display); font-size: 19px; line-height: 1.05; text-transform: uppercase; color: var(--bone); min-height: 2.1em; letter-spacing: 0.01em; }
+.rail-clock { display: flex; align-items: flex-end; justify-content: space-between; border-top: 1px solid var(--rule); padding-top: 11px; margin-top: 12px; }
+.rail-clock .l { font-family: var(--f-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-5); }
+.rail-clock .v { font-family: var(--f-display); font-size: 27px; color: var(--bone); letter-spacing: 0.02em; }
 
-  /* ---------- DISCIPLINES ---------- */
-  .disciplines { padding: 44px 0 20px; }
-  .disc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  @media (max-width: 860px){ .disc-grid { grid-template-columns: 1fr; } }
-  .disc {
-    border: 1px solid var(--line); border-radius: 16px;
-    padding: 24px 26px; display: flex; gap: 16px; align-items: flex-start;
-    background: linear-gradient(160deg, rgba(23,19,31,0.55), transparent);
-    transition: border-color 0.25s, background 0.25s, transform 0.25s;
-  }
-  .disc:hover { border-color: var(--line-2); transform: translateY(-3px); background: linear-gradient(160deg, rgba(23,19,31,0.8), transparent); }
-  .disc-ico {
-    width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
-    display: grid; place-items: center; color: var(--ice-bright);
-    background: rgba(139,92,246,0.12); border: 1px solid var(--line);
-  }
-  .disc h3 {
-    font-family: 'Archivo Black', sans-serif; font-weight: 700;
-    font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase;
-    margin-bottom: 5px;
-  }
-  .disc p { font-size: 14px; color: var(--muted); line-height: 1.5; }
-  .disc-note {
-    text-align: center; margin-top: 20px; font-size: 14px; color: var(--muted);
-  }
-  .disc-note b { color: var(--ice-pale); font-weight: 600; }
+/* ------------------------------------------------- 01 · THE THREE ROOMS */
 
-  /* ---------- SECTION SHELL ---------- */
-  section { position: relative; }
-  .sec-head { margin-bottom: 46px; }
-  .sec-eyebrow {
-    font-family: 'Barlow', sans-serif; font-size: 12px;
-    letter-spacing: 0.16em; text-transform: uppercase; color: var(--ice);
-    margin-bottom: 14px;
-  }
-  .sec-title {
-    font-family: 'Archivo Black', sans-serif; font-weight: 800;
-    font-size: clamp(30px, 4.5vw, 46px); line-height: 1.04;
-    letter-spacing: -0.02em; max-width: 18ch;
-  }
+.rooms { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; perspective: 1400px; }
+@media (max-width: 860px) { .rooms { grid-template-columns: 1fr; } }
+.room {
+  position: relative; transform-style: preserve-3d;
+  transition: transform var(--t-base) var(--e-out);
+}
+.room:hover { transform: translateY(-8px) rotateX(3deg) scale(1.012); z-index: 3; }
+@media (prefers-reduced-motion: reduce) { .room:hover { transform: none; } }
+.room .plate { aspect-ratio: 3 / 3.4; }
+@media (max-width: 860px) { .room .plate { aspect-ratio: 16 / 10; } }
 
-  /* ---------- HOW IT WORKS ---------- */
-  .how { padding: 84px 0 20px; }
-  .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
-  @media (max-width: 860px){ .how-grid { grid-template-columns: 1fr; } }
-  .step { padding: 0 30px 0 0; position: relative; }
-  .step + .step { padding-left: 30px; border-left: 1px solid var(--line); }
-  @media (max-width: 860px){
-    .step { padding: 0 0 26px; }
-    .step + .step { padding-left: 0; border-left: none; padding-top: 26px; border-top: 1px solid var(--line); }
-  }
-  .step-n {
-    font-family: 'Archivo Black', sans-serif; font-weight: 900;
-    font-size: 13px; letter-spacing: 0.1em; color: var(--ice);
-    margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
-  }
-  .step-n i { flex: 1; height: 1px; background: var(--line); display: block; }
-  .step h3 {
-    font-family: 'Archivo Black', sans-serif; font-weight: 700; font-size: 19px;
-    margin-bottom: 8px; letter-spacing: -0.01em;
-  }
-  .step p { font-size: 14.5px; color: var(--muted); }
+.room-ft {
+  display: flex; align-items: baseline; gap: 12px;
+  padding: 16px 18px; background: var(--ink-2); border: 1px solid var(--rule); border-top: 0;
+}
+.room-ft .n { font-family: var(--f-mono); font-size: 10.5px; font-weight: 700; color: var(--red); letter-spacing: 0.12em; }
+.room-ft .t { font-family: var(--f-display); font-size: 23px; text-transform: uppercase; color: var(--bone); letter-spacing: 0.02em; }
+.room-ft .d { margin-left: auto; font-family: var(--f-mono); font-size: 10px; color: var(--bone-4); letter-spacing: 0.1em; text-transform: uppercase; }
+@media (max-width: 500px) { .room-ft .d { display: none; } }
+.room p { padding: 14px 18px 0; font-size: 14.5px; color: var(--bone-3); }
 
-  /* ---------- FEATURES ---------- */
-  .features { padding: 84px 0 0; }
-  .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  @media (max-width: 860px){ .feat-grid { grid-template-columns: 1fr; } }
-  .feat {
-    border: 1px solid var(--line); border-radius: 16px;
-    padding: 28px; background: linear-gradient(160deg, rgba(23,19,31,0.5), transparent);
-    transition: border-color 0.25s, transform 0.25s, background 0.25s;
-  }
-  .feat:hover { border-color: var(--line-2); transform: translateY(-4px); background: linear-gradient(160deg, rgba(23,19,31,0.78), transparent); }
-  .feat-rule {
-    width: 26px; height: 2px; border-radius: 2px;
-    background: var(--ice); margin-bottom: 20px;
-  }
-  .feat h3 {
-    font-family: 'Archivo Black', sans-serif; font-weight: 700; font-size: 20px;
-    margin-bottom: 9px; letter-spacing: -0.01em;
-  }
-  .feat p { font-size: 14.5px; color: var(--muted); }
+/* -------------------------------------------------------- 02 · THE SHIFT */
 
-  /* ---------- SHOWCASE (chat + overlay) ---------- */
-  .showcase { padding: 84px 0 0; }
-  .showcase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  @media (max-width: 900px){ .showcase-grid { grid-template-columns: 1fr; } }
-  .show-card {
-    border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
-    background: linear-gradient(160deg, rgba(23,19,31,0.65), rgba(10,27,48,0.3));
-    box-shadow: 0 30px 70px -50px rgba(0,0,0,0.8);
-    display: flex; flex-direction: column;
-  }
-  .show-top { padding: 26px 28px 20px; }
-  .show-tag {
-    display: inline-block;
-    font-family: 'Barlow', sans-serif; font-size: 10.5px;
-    letter-spacing: 0.12em; text-transform: uppercase; color: var(--rink);
-    border: 1px solid rgba(52,211,153,0.3); border-radius: 100px;
-    padding: 4px 11px; margin-bottom: 14px;
-  }
-  .show-top h3 {
-    font-family: 'Archivo Black', sans-serif; font-weight: 800; font-size: 23px;
-    letter-spacing: -0.01em; margin-bottom: 9px;
-  }
-  .show-top p { font-size: 14.5px; color: var(--muted); }
-  .show-body { padding: 0 28px 28px; margin-top: auto; }
+.shift { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+@media (max-width: 860px) { .shift { grid-template-columns: 1fr; } }
+.step { background: rgba(16,18,22,0.72); border-top: 3px solid var(--red); padding: 30px 26px 34px; position: relative; }
+.step .n { font-family: var(--f-display); font-size: 66px; color: var(--ink-4); line-height: 0.8; margin-bottom: 20px; }
+.step h3 { margin-bottom: 10px; }
+.step p { font-size: 14.5px; color: var(--bone-3); }
 
-  .chat-box { background: #0a0912; border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
-  .cbubble-coach, .cbubble-you {
-    padding: 10px 14px; border-radius: 11px; font-size: 13.5px;
-    line-height: 1.5; margin-bottom: 9px; max-width: 88%;
-  }
-  .cbubble-coach { background: #241f36; color: #E4E2EC; }
-  .cbubble-you { background: var(--ice); color: #fff; margin-left: auto; }
-  .chat-input-fake { display: flex; gap: 8px; margin-top: 14px; }
-  .chat-input-fake .fld {
-    flex: 1; background: #08060e; border: 1px solid rgba(139,92,246,0.3);
-    border-radius: 8px; padding: 9px 12px; color: #6E6C7C; font-size: 13px;
-  }
-  .chat-input-fake .snd {
-    background: var(--ice); color: #fff; border-radius: 8px;
-    padding: 9px 18px; font-size: 13px; font-weight: 700;
-  }
+/* ---------------------------------------------------- 03 · SAMPLE REPORT */
 
-  .overlay-mock { background: #0a0912; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; position: relative; }
-  .overlay-caption {
-    display: flex; align-items: center; gap: 9px;
-    padding: 12px 16px; border-top: 1px solid var(--line);
-    font-size: 12px; color: var(--muted);
-  }
-  .vid-frame {
-    position: relative; aspect-ratio: 16 / 10;
-    background:
-      radial-gradient(ellipse 70% 60% at 50% 40%, rgba(139,92,246,0.14), transparent 70%),
-      linear-gradient(170deg, #14111f, #0a0912);
-    display: grid; place-items: center;
-  }
-  .vid-play {
-    width: 62px; height: 62px; border-radius: 50%;
-    display: grid; place-items: center; color: var(--ink);
-    background: var(--rink);
-    box-shadow: 0 8px 30px rgba(52,211,153,0.35);
-  }
-  .vid-badge {
-    position: absolute; top: 14px; left: 14px;
-    font-size: 10.5px; color: var(--muted);
-    background: rgba(5,5,7,0.7); border: 1px solid var(--line);
-    border-radius: 6px; padding: 5px 10px;
-  }
-  .vid-controls { position: absolute; left: 16px; right: 16px; bottom: 14px; }
-  .vid-scrub { height: 4px; border-radius: 100px; background: rgba(139,92,246,0.18); overflow: hidden; }
-  .vid-scrub span { display: block; height: 100%; width: 38%; border-radius: 100px; background: linear-gradient(90deg, var(--rink-deep), var(--rink)); }
-  .vid-times { display: flex; justify-content: space-between; margin-top: 7px; font-size: 10px; color: var(--muted); }
-  .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rink); box-shadow: 0 0 8px var(--rink); animation: pulse 2s infinite; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule); margin-bottom: 26px; flex-wrap: wrap; }
+.tab {
+  font-family: var(--f-display); font-size: 19px; text-transform: uppercase;
+  letter-spacing: 0.03em; color: var(--bone-5);
+  padding: 12px 20px 14px; position: relative;
+  transition: color var(--t-fast) ease;
+}
+.tab:hover { color: var(--bone-3); }
+.tab.on { color: var(--bone); }
+.tab::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px;
+  background: var(--red); transform: scaleX(0); transform-origin: left;
+  transition: transform var(--t-base) var(--e-out);
+}
+.tab.on::after { transform: scaleX(1); }
 
-  /* ---------- SAMPLE REPORT ---------- */
-  .report { padding: 84px 0 0; }
-  .report-panel {
-    border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
-    background: linear-gradient(160deg, rgba(23,19,31,0.65), rgba(10,27,48,0.3));
-    box-shadow: 0 40px 90px -50px rgba(0,0,0,0.8);
-  }
-  .report-top {
-    padding: 28px 32px; border-bottom: 1px solid var(--line);
-    display: flex; justify-content: space-between; align-items: center;
-    flex-wrap: wrap; gap: 14px; background: rgba(5,5,7,0.45);
-  }
-  .report-top h4 { font-family: 'Archivo Black', sans-serif; font-weight: 800; font-size: 20px; }
-  .report-top .meta { font-size: 12px; color: var(--muted); }
-  .grade { font-family: 'Archivo Black', sans-serif; font-weight: 900; font-size: 40px; line-height: 1; color: var(--rink); }
-  .grade small { display:block; font-size: 11px; letter-spacing: 0.1em; color: var(--muted); font-weight: 600; font-family: 'Barlow', sans-serif; margin-top: 4px; }
+.rep { display: none; }
+.rep.on { display: block; animation: repIn 420ms var(--e-out); }
+@keyframes repIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rep.on { animation: none; } }
 
-  .report-body { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); }
-  @media (max-width: 760px){ .report-body { grid-template-columns: 1fr; } }
-  .report-cell { background: var(--ink-2); padding: 30px 32px; }
-  .report-cell h5 {
-    font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; font-size: 12.5px;
-    color: var(--ice-pale); margin-bottom: 22px;
-  }
-  .stat-line { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid rgba(139,92,246,0.07); }
-  .stat-line:last-child { border-bottom: none; }
-  .stat-k { font-size: 14px; color: var(--white); }
-  .stat-v { font-size: 14px; font-weight: 600; color: var(--ice-bright); }
-  .stat-v.good { color: var(--rink); }
-  .stat-v.warn { color: var(--amber); }
+.rep-hd { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 22px; }
+.rep-hd .file { font-family: var(--f-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-4); margin-bottom: 8px; }
+.rep-grade {
+  margin-left: auto; border-left: 1px solid var(--rule); padding-left: 24px;
+  display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto;
+  column-gap: 12px; align-items: end;
+}
+.rep-grade .o { grid-column: 1 / -1; }
+.rep-grade .g { font-family: var(--f-display); font-size: clamp(52px, 6vw, 78px); color: var(--bone); line-height: 0.82; text-shadow: -2px 0 0 rgba(220,59,42,0.55), 2px 0 0 rgba(95,168,222,0.3); }
+.rep-grade .o { font-family: var(--f-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--bone-4); margin-bottom: 8px; }
+.rep-grade .s { font-family: var(--f-mono); font-size: 14px; color: var(--bone-3); margin-bottom: 6px; }
 
-  .coach-quote { font-size: 15px; color: var(--ice-pale); line-height: 1.7; border-left: 2px solid var(--rink); padding-left: 18px; margin-bottom: 18px; }
-  .drill { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; font-size: 14px; color: var(--muted); }
-  .drill b { color: var(--white); font-weight: 600; }
-  .check { color: var(--rink); flex-shrink: 0; margin-top: 2px; }
+/* headline metric tiles */
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 2px; }
+@media (max-width: 700px) { .tiles { grid-template-columns: 1fr; } }
+.tile { background: var(--ink-2); border: 1px solid var(--rule); padding: 22px 24px 24px; }
+.tile .k { font-family: var(--f-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--bone-4); margin-bottom: 14px; }
+.tile .v { font-family: var(--f-display); font-size: clamp(34px, 4vw, 50px); color: var(--bone); line-height: 0.9; margin-bottom: 16px; text-shadow: -1.5px 0 0 rgba(220,59,42,0.5), 1.5px 0 0 rgba(95,168,222,0.26); }
+.tile .v sup { font-size: 0.42em; vertical-align: super; }
+.tile .cap { font-family: var(--f-mono); font-size: 10.5px; color: var(--bone-4); margin-top: 10px; letter-spacing: 0.06em; }
 
-  .report-charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
-  @media (max-width: 760px){ .report-charts { grid-template-columns: 1fr; } }
-  .chart-cell { background: var(--ink-2); padding: 26px 28px; }
-  .chart-cell h5 { font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; font-size: 12.5px; color: var(--ice-pale); margin-bottom: 6px; }
-  .chart-cell .csub { font-size: 12px; color: var(--muted); margin-bottom: 18px; }
-  .chart-legend { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
-  .lg { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--muted); }
-  .lg i { width: 11px; height: 3px; border-radius: 2px; display: inline-block; }
-  .donut-center { font-family:'Archivo Black', sans-serif; font-weight: 800; }
+/* the depth: full measurement table + notes + chart */
+/* clip beside the headline numbers, so the footage and the measurement it
+   produced sit in the same glance */
+.rep-top { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 2px; margin-bottom: 2px; }
+@media (max-width: 900px) { .rep-top { grid-template-columns: 1fr; } }
+.rep-top .tiles { grid-template-columns: 1fr; margin-bottom: 0; }
 
-  .tabs {
-    display: inline-flex; gap: 4px; padding: 5px;
-    border: 1px solid var(--line); border-radius: 12px;
-    background: rgba(5,5,7,0.55); margin-bottom: 32px;
-  }
-  .tab {
-    font-family: 'Barlow', sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.07em; font-size: 13.5px;
-    color: var(--muted); background: transparent; border: none;
-    padding: 11px 22px; border-radius: 8px; cursor: pointer;
-    transition: all 0.2s; display: flex; align-items: center; gap: 9px;
-  }
-  .tab:hover { color: var(--white); }
-  .tab.active { background: rgba(139,92,246,0.15); color: var(--white); box-shadow: inset 0 0 0 1px var(--line-2); }
-  .tab .soon-dot { font-size: 9px; background: var(--rink); color: var(--ink); padding: 2px 6px; border-radius: 100px; letter-spacing: 0.05em; }
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; animation: fadeIn 0.4s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.clip {
+  position: relative; overflow: hidden;
+  background: var(--ink-2); border: 1px solid var(--rule);
+  aspect-ratio: 16 / 9; min-height: 100%;
+}
+.clip > video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.clip-empty {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.018) 0 14px, transparent 14px 28px),
+    var(--ink-2);
+  padding: 20px;
+}
+.clip:has(video) .clip-empty { display: none; }
+.clip-empty .k {
+  display: block; font-family: var(--f-mono); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); margin-bottom: 9px;
+}
+.clip-empty .t { display: block; font-family: var(--f-display); font-size: 20px; text-transform: uppercase; color: var(--bone-3); letter-spacing: 0.02em; }
+.clip-empty .d { display: block; font-family: var(--f-mono); font-size: 10.5px; color: var(--bone-5); margin-top: 8px; }
+.clip-tag {
+  position: absolute; left: 0; bottom: 0; z-index: 3;
+  font-family: var(--f-mono); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-3);
+  background: rgba(8,8,10,0.78); padding: 7px 11px;
+}
+.clip:not(:has(video)) .clip-tag { display: none; }
 
-  .format-note {
-    margin-top: 22px; padding: 18px 22px;
-    border: 1px solid var(--line); border-radius: 14px;
-    background: rgba(139,92,246,0.05);
-    font-size: 14.5px; color: var(--muted); line-height: 1.6;
-  }
-  .format-note b { color: var(--white); font-weight: 600; }
+.rep-body { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+@media (max-width: 900px) { .rep-body { grid-template-columns: 1fr; } }
+.rep-cell { background: var(--ink-2); border: 1px solid var(--rule); padding: 24px; }
+.rep-cell h5 { font-family: var(--f-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--bone-4); margin-bottom: 18px; }
 
-  .continues { position: relative; border-top: 1px solid var(--line); background: var(--ink-2); padding: 0; }
-  .continues-peek {
-    padding: 26px 32px 0; position: relative;
-    max-height: 132px; overflow: hidden;
-    -webkit-mask-image: linear-gradient(180deg, black 0%, black 30%, transparent 96%);
-    mask-image: linear-gradient(180deg, black 0%, black 30%, transparent 96%);
-  }
-  .peek-row { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; opacity: 0.8; }
-  .peek-icon {
-    width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
-    display: grid; place-items: center; color: var(--ice-bright);
-    background: rgba(139,92,246,0.1); border: 1px solid var(--line);
-  }
-  .peek-txt b { font-family:'Archivo Black', sans-serif; font-weight: 700; font-size: 14.5px; display: block; }
-  .peek-txt span { font-size: 12.5px; color: var(--muted); }
-  .continues-label {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    padding: 20px; border-top: 1px solid var(--line);
-    background: rgba(5,5,7,0.55);
-    font-size: 12.5px; color: var(--ice-pale);
-    letter-spacing: 0.04em; flex-wrap: wrap; text-align: center;
-  }
-  .continues-label b { color: var(--white); }
-  .pages-pill {
-    background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3);
-    color: var(--rink); padding: 5px 13px; border-radius: 100px;
-    font-weight: 600; letter-spacing: 0.08em;
-  }
+.mrow { display: flex; align-items: baseline; gap: 14px; padding: 10px 0; border-bottom: 1px dotted var(--rule); font-size: 14.5px; }
+.mrow:last-child { border-bottom: 0; }
+.mrow .k { color: var(--bone-3); }
+.mrow .v { margin-left: auto; font-family: var(--f-mono); font-weight: 700; color: var(--bone); }
+.mrow .v.up { color: var(--up); } .mrow .v.dn { color: var(--down); }
 
-  /* ---------- COMING SOON ---------- */
-  .soon-hero {
-    border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
-    background: linear-gradient(160deg, rgba(23,19,31,0.65), rgba(10,27,48,0.3));
-    box-shadow: 0 40px 90px -50px rgba(0,0,0,0.8);
-  }
-  .soon-top {
-    padding: 30px 32px; border-bottom: 1px solid var(--line);
-    background: rgba(5,5,7,0.45); display: flex; justify-content: space-between;
-    align-items: center; flex-wrap: wrap; gap: 14px;
-  }
-  .soon-top h4 { font-family:'Archivo Black', sans-serif; font-weight: 800; font-size: 22px; }
-  .soon-top p { font-size: 14px; color: var(--muted); margin-top: 4px; max-width: 48ch; }
-  .soon-badge {
-    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--rink);
-    border: 1px solid rgba(52,211,153,0.3); border-radius: 100px; padding: 7px 14px;
-  }
-  .soon-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); }
-  @media (max-width: 760px){ .soon-grid { grid-template-columns: 1fr; } }
-  .soon-cell { background: var(--ink-2); padding: 28px 30px; }
-  .soon-cell .ico {
-    width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
-    background: rgba(139,92,246,0.12); border: 1px solid var(--line);
-    color: var(--ice-bright); margin-bottom: 16px;
-  }
-  .soon-cell h6 { font-family:'Archivo Black', sans-serif; font-weight: 700; font-size: 17px; margin-bottom: 7px; }
-  .soon-cell .cap { font-size: 13.5px; color: var(--muted); margin-bottom: 18px; }
+.drill { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; font-size: 14.5px; color: var(--bone-3); }
+.drill b { color: var(--bone); font-weight: 600; }
+.sq { width: 9px; height: 9px; background: var(--red); flex: none; margin-top: 7px; }
 
-  .progress-svg { width: 100%; }
-  .drill-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip {
-    font-size: 12px; color: var(--ice-pale);
-    border: 1px solid var(--line); border-radius: 100px;
-    padding: 7px 13px; background: rgba(139,92,246,0.06);
-    display: flex; align-items: center; gap: 7px;
-  }
-  .chip .pct { color: var(--rink); font-size: 11px; }
+.next-drill {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule);
+  font-family: var(--f-mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.13em; text-transform: uppercase; color: var(--bone-2);
+}
 
-  .map-mini { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #0a0912; position: relative; }
-  .event-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--line); font-size: 13px; }
-  .event-row:first-child { border-top: none; }
-  .event-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ice); flex-shrink: 0; box-shadow: 0 0 8px var(--glow); }
-  .event-row .ename { color: var(--white); font-weight: 500; flex: 1; }
-  .event-row .edist { font-size: 11px; color: var(--muted); }
+.rep-ft {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  background: var(--ink-1); border: 1px solid var(--rule); border-top: 0;
+  padding: 20px 24px;
+}
+.rep-ft .peek { display: flex; gap: 22px; flex-wrap: wrap; }
+.rep-ft .peek span { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--bone-4); display: flex; align-items: center; gap: 8px; }
+.rep-ft .pages { margin-left: auto; font-family: var(--f-mono); font-size: 11px; color: var(--bone-3); letter-spacing: 0.08em; }
+.rep-ft .pages b { color: var(--bone); }
 
-  .lb-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(139,92,246,0.07); }
-  .lb-row:last-child { border-bottom: none; }
-  .lb-rank { font-family:'Archivo Black', sans-serif; font-weight: 800; font-size: 14px; width: 22px; color: var(--muted); }
-  .lb-rank.top { color: var(--rink); }
-  .lb-name { flex: 1; font-size: 13.5px; color: var(--white); }
-  .lb-score { font-size: 13px; color: var(--ice-bright); font-weight: 600; }
+/* ------------------------------------------------------- 04 · THE BOARD */
 
-  /* ---------- PRICING ---------- */
-  .pricing { padding: 90px 0 110px; }
-  .price-card {
-    max-width: 520px; margin: 0 auto; text-align: center;
-    border: 1px solid var(--line-2); border-radius: 22px;
-    padding: 50px 44px;
-    background: linear-gradient(170deg, rgba(23,19,31,0.75), rgba(10,27,48,0.3));
-    box-shadow: 0 0 60px -20px var(--glow);
-    position: relative; overflow: hidden;
-  }
-  .price-card::before {
-    content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%;
-    background: radial-gradient(circle, rgba(52,211,153,0.08), transparent 60%);
-  }
-  .price-card > * { position: relative; }
-  .price-label { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ice); margin-bottom: 18px; }
-  .trial-flag {
-    display: inline-block; font-size: 11.5px; font-weight: 700;
-    letter-spacing: 0.1em; text-transform: uppercase; color: var(--rink);
-    background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.35);
-    border-radius: 100px; padding: 6px 14px; margin-bottom: 20px;
-  }
-  .price-big { font-family: 'Archivo Black', sans-serif; font-weight: 900; font-size: 74px; line-height: 1; letter-spacing: -0.03em; }
-  .price-big sup { font-size: 30px; vertical-align: super; color: var(--muted); }
-  .price-per { font-size: 14px; color: var(--muted); }
-  .price-unlim { font-size: 17px; color: var(--ice-pale); margin: 16px 0 30px; font-weight: 500; }
-  .price-list { list-style: none; text-align: left; margin: 0 auto 32px; max-width: 360px; }
-  .price-list li { display: flex; gap: 11px; padding: 9px 0; font-size: 14.5px; color: var(--white); }
-  .price-fine { font-size: 12.5px; color: var(--muted); margin-top: 18px; line-height: 1.6; max-width: 40ch; margin-left: auto; margin-right: auto; }
+.board-sec { overflow: hidden; }
+.board-grid { display: grid; grid-template-columns: 0.92fr 1.08fr; gap: clamp(28px, 4vw, 60px); align-items: center; }
+@media (max-width: 940px) { .board-grid { grid-template-columns: 1fr; } }
+.board-list { margin-top: 32px; display: grid; gap: 24px; }
+.board-item { display: flex; gap: 16px; align-items: flex-start; }
+.board-item .ico { color: var(--red); flex: none; margin-top: 2px; }
+.board-item h4 { font-family: var(--f-display); font-size: 19px; text-transform: uppercase; color: var(--bone); letter-spacing: 0.02em; margin-bottom: 5px; }
+.board-item p { font-size: 14.5px; color: var(--bone-3); }
 
-  /* ---------- FOOTER ---------- */
-  footer { border-top: 1px solid var(--line); padding: 44px 0; }
-  .foot-inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
-  .foot-inner p { font-size: 13px; color: var(--muted); }
-  .foot-inner a { color: var(--ice-bright); text-decoration: none; }
-  .foot-inner a:hover { text-decoration: underline; }
-  .beta-flag {
-    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--rink); border: 1px solid rgba(52,211,153,0.3);
-    border-radius: 100px; padding: 5px 12px;
-  }
+/* the greaseboard itself — drawn, wobbled, and lit like a real board */
+.board-wrap { position: relative; }
+.greaseboard {
+  position: relative;
+  background:
+    radial-gradient(ellipse 70% 60% at 32% 22%, rgba(255,255,255,0.055), transparent 70%),
+    linear-gradient(158deg, #1E1E22 0%, #17171B 48%, #101013 100%);
+  border: 1px solid var(--rule-2);
+  box-shadow: 0 50px 90px -50px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.05);
+  padding: 22px;
+}
+.greaseboard::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(122deg, transparent 36%, rgba(255,255,255,0.045) 47%, transparent 56%);
+}
+.greaseboard svg { width: 100%; height: auto; }
+.gb-caption {
+  position: absolute; bottom: -12px; left: 22px;
+  background: #0A0D12; padding: 0 10px;
+  font-family: var(--f-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--bone-5);
+}
 
-  @media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-    .pulse, .rec-dot { animation: none; }
-    .rv { opacity: 1; transform: none; transition: none; }
-    .tab-panel.active { animation: none; }
-  }
+/* the coach, in the frame the board used to occupy */
+.chat { display: flex; flex-direction: column; }
+.chat-hd {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-bottom: 14px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.chat-t {
+  font-family: var(--f-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--bone-4);
+}
+.chat-pill {
+  font-family: var(--f-mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--red);
+  background: rgba(220,59,42,0.1); border: 1px solid rgba(220,59,42,0.4);
+  padding: 4px 9px;
+}
+.chat-body { display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; }
+/* JS hides the bubbles and plays them back in; without JS they simply show. */
+.bub-in { animation: bubIn 360ms var(--e-out) both; }
+@keyframes bubIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+.typing {
+  align-self: flex-start;
+  display: flex; align-items: center; gap: 5px;
+  padding: 15px 16px;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid var(--rule); border-left: 3px solid var(--bone-4);
+  animation: bubIn 260ms var(--e-out) both;
+}
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--bone-4); animation: dot 1.15s infinite ease-in-out; }
+.typing i:nth-child(2) { animation-delay: 0.16s; }
+.typing i:nth-child(3) { animation-delay: 0.32s; }
+@keyframes dot { 0%,60%,100% { opacity: 0.25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+
+.chat-fld.live { color: var(--bone); border-color: var(--rule-2); }
+.chat-fld .caret {
+  display: inline-block; width: 1px; height: 1em; margin-left: 1px;
+  background: var(--red); vertical-align: -0.15em;
+  animation: caret 1s steps(1) infinite;
+}
+@keyframes caret { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bub-in, .typing { animation: none; }
+  .chat-fld .caret { display: none; }
+}
+.bub { padding: 13px 15px; font-size: 14.5px; line-height: 1.55; max-width: 86%; }
+.bub-coach {
+  align-self: flex-start;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--bone-4);
+  color: var(--bone-2);
+}
+.bub-you { align-self: flex-end; background: var(--red); color: #fff; }
+.chat-row {
+  display: flex; gap: 10px; align-items: stretch;
+  margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule);
+}
+.chat-fld {
+  flex: 1; border: 1px solid var(--rule-2); padding: 12px 14px;
+  font-size: 14px; color: var(--bone-5);
+}
+.chat-send {
+  display: grid; place-items: center;
+  background: var(--red); color: #fff; padding: 0 20px;
+  font-family: var(--f-mono); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+}
+@media (max-width: 520px) { .bub { max-width: 96%; } }
+
+/* ---------------------------------------------------- 05 · NEXT SHIFT */
+
+.soons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; }
+@media (max-width: 820px) { .soons { grid-template-columns: 1fr; } }
+.soon { background: var(--ink-2); border: 1px solid var(--rule); padding: 26px; display: flex; flex-direction: column; position: relative; }
+.soon .lbl { position: absolute; top: 0; right: 0; font-family: var(--f-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--down); background: rgba(201,162,39,0.12); border-left: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 6px 11px; }
+.soon h4 { margin-bottom: 9px; padding-right: 96px; }
+.soon p { font-size: 14.5px; color: var(--bone-3); margin-bottom: 20px; }
+.sketch { margin-top: auto; border: 1px dashed var(--rule-2); background: var(--ink-1); padding: 18px; position: relative; }
+.sketch::after { content: "CONCEPT — NOT BUILT"; position: absolute; bottom: 6px; right: 9px; font-family: var(--f-mono); font-size: 8.5px; font-weight: 700; letter-spacing: 0.14em; color: var(--bone-5); }
+.skrow { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.skrow .l { font-family: var(--f-mono); font-size: 9.5px; font-weight: 700; letter-spacing: 0.1em; color: var(--bone-5); width: 40px; flex: none; }
+.skrow .l.me { color: var(--red); }
+.skbar { height: 7px; background: var(--ink-4); }
+.skbar.me { background: var(--red); }
+
+/* ---------------------------------------------------------- 06 · TERMS */
+
+.price { max-width: 600px; margin: 0 auto; background: var(--ink-2); border: 1px solid var(--rule); border-top: 3px solid var(--red); padding: clamp(28px, 4vw, 46px); text-align: center; position: relative; }
+.price .flag { position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); background: var(--red); color: #fff; font-family: var(--f-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; padding: 7px 15px; }
+.price .amt { font-family: var(--f-display); font-size: clamp(80px, 11vw, 128px); color: var(--bone); line-height: 0.84; margin: 22px 0 8px; text-shadow: -3px 0 0 rgba(220,59,42,0.55), 3px 0 0 rgba(95,168,222,0.3); }
+.price .amt sup { font-size: 0.3em; vertical-align: super; }
+.price .per { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--bone-4); }
+.price ul { text-align: left; margin: 30px 0; border-top: 1px solid var(--rule); }
+.price li { display: flex; gap: 13px; align-items: flex-start; padding: 11px 2px; border-bottom: 1px solid var(--rule); font-size: 14.5px; color: var(--bone-2); }
+.price .fine { font-size: 13px; color: var(--bone-4); margin-top: 18px; line-height: 1.55; }
+
+/* ------------------------------------------------------- CLOSER + FOOT */
+
+.closer { text-align: center; }
+.closer-h { max-width: 22ch; margin: 0 auto; line-height: 0.96; }
+.closer .lede { margin: 22px auto 30px; }
+footer { border-top: 1px solid var(--rule); padding: 42px 0 38px; }
+.foot { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+.foot p { font-size: 14px; color: var(--bone-4); }
+.foot a { color: var(--bone-2); border-bottom: 1px solid var(--rule-2); }
+.foot a:hover { border-bottom-color: var(--red); }
+.foot .m { margin-left: auto; font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--bone-5); }
 </style>
 </head>
 <body>
 
-<!-- NAV -->
-<nav id="nav">
-  <div class="nav-inner">
-    <a href="/" class="brand">
-      <img src="/img/atlas-mark.png" alt="" style="height:30px;width:auto;display:block;">
-      <div class="brand-name">ATLAS<span>.</span></div>
-    </a>
-    <div class="nav-links">
-      <a href="#what">What you get</a>
-      <a href="#report">Sample report</a>
-      <a href="#pricing">Pricing</a>
+<div class="ice-bg" aria-hidden="true"></div>
+<div class="ice-sheen" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════════════════════════════ RAIL — THE PLAY ══ -->
+<aside id="rail" aria-hidden="true">
+  <div class="rail-hd">
+    <span class="t">The play</span>
+    <span class="c" id="railShift">01 / 08</span>
+  </div>
+
+  <div class="rail-ice">
+    <svg viewBox="0 0 200 620" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- sheet -->
+      <rect x="10" y="10" width="180" height="590" rx="72" fill="#0B0B0E" stroke="#26262C" stroke-width="1.4"/>
+      <!-- goal lines -->
+      <line x1="24" y1="56"  x2="176" y2="56"  stroke="#DC3B2A" stroke-width="1.2" opacity="0.55"/>
+      <line x1="24" y1="554" x2="176" y2="554" stroke="#DC3B2A" stroke-width="1.2" opacity="0.55"/>
+      <!-- blue lines, kept grey: the only colour on this page is red -->
+      <line x1="12" y1="225" x2="188" y2="225" stroke="#34343C" stroke-width="3"/>
+      <line x1="12" y1="385" x2="188" y2="385" stroke="#34343C" stroke-width="3"/>
+      <!-- centre -->
+      <line x1="12" y1="305" x2="188" y2="305" stroke="#DC3B2A" stroke-width="2" opacity="0.5"/>
+      <circle cx="100" cy="305" r="30" stroke="#34343C" stroke-width="1.2"/>
+      <circle cx="100" cy="305" r="3" fill="#DC3B2A"/>
+      <!-- faceoff circles -->
+      <g stroke="#DC3B2A" stroke-width="1" opacity="0.32" fill="none">
+        <circle cx="58" cy="130" r="24"/><circle cx="142" cy="130" r="24"/>
+        <circle cx="58" cy="480" r="24"/><circle cx="142" cy="480" r="24"/>
+      </g>
+      <g fill="#DC3B2A" opacity="0.55">
+        <circle cx="58" cy="130" r="2.6"/><circle cx="142" cy="130" r="2.6"/>
+        <circle cx="58" cy="480" r="2.6"/><circle cx="142" cy="480" r="2.6"/>
+      </g>
+
+      <!-- crease + net at the bottom: where the play ends -->
+      <path d="M82 554 a18 18 0 0 0 36 0" stroke="#34343C" stroke-width="1.2" fill="#15161A"/>
+      <g>
+        <rect x="86" y="554" width="28" height="17" fill="#101013" stroke="#8A8985" stroke-width="1.6"/>
+        <g stroke="#5E5E5B" stroke-width="0.55" opacity="0.9">
+          <line x1="93" y1="554" x2="93" y2="571"/><line x1="100" y1="554" x2="100" y2="571"/><line x1="107" y1="554" x2="107" y2="571"/>
+          <line x1="86" y1="560" x2="114" y2="560"/><line x1="86" y1="566" x2="114" y2="566"/>
+        </g>
+      </g>
+      <!-- goal lamp -->
+      <circle class="lamp-glow" cx="100" cy="590" r="15" fill="#DC3B2A" opacity="0"/>
+      <circle class="lamp" cx="100" cy="590" r="6"/>
+      <text class="goal-word" x="100" y="614">Goal</text>
+
+      <!-- the play: banks off the boards, cycles low, drives the net -->
+      <path id="playPath"
+            d="M100 30 C100 62 42 72 33 122 C27 166 92 176 121 206 C155 236 172 262 168 302
+               C164 346 100 351 72 381 C44 409 34 451 61 483 C89 516 131 501 146 471
+               C159 443 141 421 119 431 C97 443 92 501 100 549"
+            stroke="none" fill="none"/>
+      <path id="playTrail"
+            d="M100 30 C100 62 42 72 33 122 C27 166 92 176 121 206 C155 236 172 262 168 302
+               C164 346 100 351 72 381 C44 409 34 451 61 483 C89 516 131 501 146 471
+               C159 443 141 421 119 431 C97 443 92 501 100 549"
+            stroke="#DC3B2A" stroke-width="1.8" stroke-linecap="round"
+            stroke-dasharray="4 5" fill="none" opacity="0.75"/>
+
+      <!-- the puck -->
+      <g id="puck" transform="translate(100,30)">
+        <ellipse cx="0" cy="1.5" rx="9" ry="4" fill="#000" opacity="0.5"/>
+        <ellipse cx="0" cy="0" rx="7" ry="3.4" fill="#1A1A1E" stroke="#F2F1ED" stroke-width="1"/>
+        <ellipse cx="0" cy="-1.4" rx="7" ry="3.4" fill="#0B0B0E" stroke="#F2F1ED" stroke-width="1"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="rail-ft">
+    <div class="meta" id="railMeta">Under the glass</div>
+    <div class="name" id="railName">Find the rep that changes the game</div>
+    <div class="rail-clock">
+      <span class="l">Period 1<br>time left</span>
+      <span class="v" id="railClock">20:00</span>
     </div>
-    <a href="/signup.html" class="nav-cta">Start free trial</a>
+  </div>
+</aside>
+
+<!-- ══════════════════════════════════════════════════════════════════ NAV -->
+<nav id="nav">
+  <div class="nav-in">
+    <a href="/" class="mark"><img src="/img/atlas-mark.png" alt=""><span>Atlas</span></a>
+    <div class="nav-links">
+      <a href="#rooms">The three</a>
+      <a href="#report">Sample report</a>
+      <a href="#board">How it reads</a>
+      <a href="#terms">Pricing</a>
+    </div>
+    <a href="/signup.html" class="btn btn-red">Start 5-day trial</a>
   </div>
 </nav>
 
-<!-- HERO -->
-<header class="hero">
-  <div class="wrap">
-    <div class="hero-grid">
-      <div class="hero-lede">
-        <div class="eyebrow"><span class="pulse"></span> Early beta · built by a BU student</div>
-        <h1 class="hero-title">See your game the way a <em>coach</em> sees it.</h1>
-      </div>
+<!-- ═════════════════════════════════════════════════════════════════ HERO -->
+<header class="hero" data-rail-name="Find the rep that changes the game" data-rail-meta="Under the glass">
 
-      <div class="hero-rest">
-        <p class="hero-sub">Upload a clip of your <b>skating</b>, your <b>shot</b>, or your <b>off-ice workout</b>. Atlas breaks down the mechanics frame by frame — then hands back your numbers, an annotated video, and a coach you can actually ask questions.</p>
-        <div class="hero-actions">
-          <a href="/signup.html" class="btn-primary">Start your 5-day free trial</a>
-          <a href="#report" class="btn-ghost">See a sample report</a>
-        </div>
-        <div class="trial-line">
-          <span><b>Free for 5 days</b>, then $15/mo · unlimited clips</span>
-          <span class="trial-sep">|</span>
-          <span>Card required — cancel before day 5 and you won't be charged</span>
-        </div>
-      </div>
+  <div class="hero-media">
+    <div class="plate hero-plate" data-par="0.05">
+      <img src="/img/hero-rink.jpg"
+           alt="An Atlas player cutting hard on the ice, spray coming off the blades"
+           onerror="this.remove()">
+    </div>
 
-      <!-- ATHLETE -->
-      <div class="hero-figure hero-stage" id="heroFig">
-        <div class="fig-glow" aria-hidden="true"></div>
-        <img class="athlete" id="athlete" src="/img/athlete.png"
-             alt="Hockey player mid-stride with Atlas pose tracking drawn over the body">
-        <div class="fig-scan" id="figScan" aria-hidden="true"></div>
-        <canvas class="track" id="track" aria-hidden="true"></canvas>
+  </div>
 
-        <div class="hud-chip hc-a" aria-hidden="true">
-          <span class="hc-k">Knee flexion</span>
-          <span class="hc-v">118<i>°</i></span>
-          <span class="hc-tag good">Power zone</span>
-        </div>
-        <div class="hud-chip hc-b" aria-hidden="true">
-          <span class="hc-k">Forward lean</span>
-          <span class="hc-v">24<i>°</i></span>
-          <span class="hc-tag warn">+6° to gain</span>
-        </div>
+  <div class="hero-badge" aria-hidden="true">Atlas vision <i>/</i> built for hockey</div>
+
+
+  <div class="hero-in">
+    <div class="wipe in">
+      <div class="slash">Your game <i>/</i> under the glass</div>
+      <h1 class="disp d1">
+        <span class="wipe-line"><span>Find the rep</span></span>
+        <span class="wipe-line"><span>that <em class="hollow" style="font-style:normal">changes</em></span></span>
+        <span class="wipe-line"><span>the game.</span></span>
+      </h1>
+      <p class="lede" style="border-left:1px solid var(--rule-2);padding-left:20px">Send a hockey clip. Atlas measures the details a coach sees — knee bend, release time, weight transfer — and gives you the next drill, not generic advice.</p>
+      <div class="hero-cta">
+        <a href="/signup.html" class="btn btn-red">
+          Start 5-day trial
+          <svg class="arw" width="15" height="10" viewBox="0 0 15 10" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M0 5h13M9 1l4 4-4 4"/></svg>
+        </a>
+        <a href="#report" class="btn btn-line">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5 12 7l-9 5.5z"/></svg>
+          See the report
+        </a>
       </div>
+      <div class="hero-terms">5 days free · then $15/mo · cancel on your terms</div>
     </div>
   </div>
+
 </header>
 
-<!-- DISCIPLINES -->
-<section class="disciplines">
-  <div class="wrap">
-    <div class="disc-grid">
-      <div class="disc rv">
-        <div class="disc-ico">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7l5 5-5 5"/><path d="M12 7l5 5-5 5"/></svg>
-        </div>
-        <div>
-          <h3>Skating</h3>
-          <p>Your stride, knee bend, balance and posture — measured on every push.</p>
-        </div>
-      </div>
-      <div class="disc rv">
-        <div class="disc-ico">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="6" cy="17.5" rx="3.2" ry="1.6"/><path d="M8.4 15.6C11 10 15 6.6 20 5.4"/><path d="M17.2 4.6l2.9.6-.6 2.9"/></svg>
-        </div>
-        <div>
-          <h3>Shooting</h3>
-          <p>Your release, weight transfer and follow-through, shot after shot.</p>
-        </div>
-      </div>
-      <div class="disc rv">
-        <div class="disc-ico">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5v5M7.5 7v10M16.5 7v10M20 9.5v5M7.5 12h9"/></svg>
-        </div>
-        <div>
-          <h3>Workouts</h3>
-          <p>Off-ice lifts and jumps — depth, form and tempo, checked rep by rep.</p>
-        </div>
-      </div>
+<!-- ══════════════════════════════════════════════════════════════ TICKER -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-row">
+    <span>Skating</span><span>Shooting</span><span>Off-ice</span><span>Knee bend</span>
+    <span>Release time</span><span>Weight transfer</span><span>Stride length</span><span>Balance</span>
+    <span>Skating</span><span>Shooting</span><span>Off-ice</span><span>Knee bend</span>
+    <span>Release time</span><span>Weight transfer</span><span>Stride length</span><span>Balance</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 01 · THE THREE ROOMS ═ -->
+<section id="rooms" class="pad" data-rail-name="Skating, shooting, off-ice" data-rail-meta="01 / The three">
+  <div class="shell">
+    <div class="head rv">
+      <span class="slash">One subscription <i>/</i> three rooms</span>
+      <span class="head-aside">Drop a clip &mdash; leave with a plan</span>
     </div>
-    <p class="disc-note rv">One subscription. <b>Send clips of all three.</b></p>
+    <hr class="rule-heavy rv" style="margin-bottom:34px">
+
+    <h2 class="disp d2 rv rv-1" style="margin-bottom:38px">Build the whole player.</h2>
+
+    <div class="rooms">
+      <article class="room rv rv-1">
+        <div class="plate plate-hover" style="position:relative">
+          <img src="/img/room-skating.jpg" alt="" onerror="this.remove()">
+          <div class="plate-empty"><span>Photo slot<br>skating<br>1200 &times; 1360</span></div>
+          <span class="reg reg-tl"></span><span class="reg reg-br"></span>
+        </div>
+        <div class="room-ft"><span class="n">01</span><span class="t">Skating</span><span class="d">Stride</span></div>
+        <p>Your stride, knee bend, balance and posture — measured on every push.</p>
+      </article>
+
+      <article class="room rv rv-2">
+        <div class="plate plate-hover" style="position:relative">
+          <img src="/img/room-shooting.jpg" alt="" onerror="this.remove()">
+          <div class="plate-empty"><span>Photo slot<br>shooting<br>1200 &times; 1360</span></div>
+          <span class="reg reg-tl"></span><span class="reg reg-br"></span>
+        </div>
+        <div class="room-ft"><span class="n">02</span><span class="t">Shooting</span><span class="d">Release</span></div>
+        <p>Your release, weight transfer and follow-through, shot after shot.</p>
+      </article>
+
+      <article class="room rv rv-3">
+        <div class="plate plate-hover" style="position:relative">
+          <img src="/img/room-workouts.jpg" alt="" onerror="this.remove()">
+          <div class="plate-empty"><span>Photo slot<br>off-ice<br>1200 &times; 1360</span></div>
+          <span class="reg reg-tl"></span><span class="reg reg-br"></span>
+        </div>
+        <div class="room-ft"><span class="n">03</span><span class="t">Workouts</span><span class="d">Form</span></div>
+        <p>Off-ice lifts and jumps — depth, form and tempo, checked rep by rep.</p>
+      </article>
+    </div>
   </div>
 </section>
 
-<!-- HOW IT WORKS -->
-<section class="how">
-  <div class="wrap">
-    <div class="sec-head rv">
-      <div class="sec-eyebrow">How it works</div>
-      <h2 class="sec-title">Three steps, one clip.</h2>
+<!-- ════════════════════════════════════════════════════ 02 · THE SHIFT ══ -->
+<section class="pad" data-rail-name="Film it, send it, get it back" data-rail-meta="02 / The shift">
+  <div class="shell">
+    <div class="head rv">
+      <span class="slash">How it works <i>/</i> 02</span>
+      <span class="head-aside">Phone camera &mdash; no hardware</span>
     </div>
-    <div class="how-grid">
-      <div class="step rv">
-        <div class="step-n">01 <i></i></div>
-        <h3>Film it on your phone</h3>
+    <hr class="rule-heavy rv" style="margin-bottom:34px">
+    <h2 class="disp d2 rv rv-1" style="margin-bottom:38px">Three steps, <em class="hollow" style="font-style:normal">one</em> clip.</h2>
+
+    <div class="shift">
+      <div class="step rv rv-1">
+        <div class="n">01</div>
+        <h3 class="disp d4">Film it on your phone</h3>
         <p>A few seconds is enough. Skating from the side, a shot from behind, a lift from the front — no special gear, no setup.</p>
       </div>
-      <div class="step rv">
-        <div class="step-n">02 <i></i></div>
-        <h3>Atlas reads every frame</h3>
+      <div class="step rv rv-2">
+        <div class="n">02</div>
+        <h3 class="disp d4">Atlas reads every frame</h3>
         <p>Computer vision tracks your joints through the whole clip and measures the angles a coach would be watching for.</p>
       </div>
-      <div class="step rv">
-        <div class="step-n">03 <i></i></div>
-        <h3>Get your report the same day</h3>
+      <div class="step rv rv-3">
+        <div class="n">03</div>
+        <h3 class="disp d4">Get it back the same day</h3>
         <p>Scores, an annotated video, drills to fix what's holding you back, and a coach you can ask follow-up questions.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- FEATURES -->
-<section class="features" id="what">
-  <div class="wrap">
-    <div class="sec-head rv">
-      <div class="sec-eyebrow">What you get back</div>
-      <h2 class="sec-title">A full breakdown, not a thumbs up.</h2>
+<!-- ═══════════════════════════════════════════════ 03 · SAMPLE REPORT ═══ -->
+<section id="report" class="pad" data-rail-name="The report doesn't guess" data-rail-meta="03 / Sample output">
+  <div class="shell">
+    <div class="head rv">
+      <span class="slash">Sample output <i>/</i> 03</span>
+      <span class="head-aside">Real format &mdash; example clip</span>
     </div>
-    <div class="feat-grid">
-      <div class="feat rv">
-        <div class="feat-rule"></div>
-        <h3>Mechanical metrics</h3>
-        <p>Knee bend, hip angle, stride length, forward lean, balance, weight transfer — measured off your actual frames, not estimated.</p>
-      </div>
-      <div class="feat rv">
-        <div class="feat-rule"></div>
-        <h3>Annotated video</h3>
-        <p>Your clip played back with the tracking drawn on top, so you can see exactly what Atlas saw at every frame.</p>
-      </div>
-      <div class="feat rv">
-        <div class="feat-rule"></div>
-        <h3>Atlas Chat</h3>
-        <p>An AI coach that already has your report open. Ask why a score is what it is, or what to work on first — and get an answer grounded in your numbers.</p>
-      </div>
-      <div class="feat rv">
-        <div class="feat-rule"></div>
-        <h3>AI coaching notes</h3>
-        <p>Plain-language feedback: what's working, what's holding you back, and the one fix to prioritize first.</p>
-      </div>
-      <div class="feat rv">
-        <div class="feat-rule"></div>
-        <h3>Drill prescriptions</h3>
-        <p>On-ice drills or off-ice corrections matched to your weak points, so you know exactly what to work on next session.</p>
-      </div>
-      <div class="feat rv">
-        <div class="feat-rule"></div>
-        <h3>PDF report</h3>
-        <p>A clean, shareable report with your charts and scores. Send it to a coach, parent, or keep it for your records.</p>
-      </div>
-    </div>
-  </div>
-</section>
+    <hr class="rule-heavy rv" style="margin-bottom:34px">
 
-<!-- SHOWCASE: CHAT + OVERLAY -->
-<section class="showcase">
-  <div class="wrap">
-    <div class="showcase-grid">
-      <div class="show-card rv">
-        <div class="show-top">
-          <span class="show-tag">Included</span>
-          <h3>A coach that's read your report.</h3>
-          <p>Not a generic chatbot. Atlas Chat is loaded with your own analysis before you type a word — your scores, your raw measurements, your drills.</p>
-        </div>
-        <div class="show-body">
-          <div class="chat-box">
-            <div class="cbubble-coach">Your knee bend and lean are already elite. Arm drive is the one thing capping your top speed.</div>
-            <div class="cbubble-you">what should I do about it</div>
-            <div class="cbubble-coach">Stickless arm-pump skating — full lengths, no stick, arms driving hard in rhythm with every stride. 4 sets.</div>
-            <div class="chat-input-fake">
-              <div class="fld">Ask about your skating…</div>
-              <div class="snd">Send</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="show-card rv">
-        <div class="show-top">
-          <span class="show-tag">Included</span>
-          <h3>Watch the tracking, frame by frame.</h3>
-          <p>Numbers tell you what changed. The overlay shows you where. Your clip comes back with joint tracking drawn over every rep.</p>
-        </div>
-        <div class="show-body">
-          <div class="overlay-mock">
-            <div class="vid-frame">
-              <div class="vid-play">
-                <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor" aria-hidden="true"><path d="M8.5 4.8 L20.5 12 L8.5 19.2 Z"/></svg>
-              </div>
-              <div class="vid-badge">clip_04 · annotated</div>
-              <div class="vid-controls">
-                <div class="vid-scrub"><span></span></div>
-                <div class="vid-times"><span>0:04</span><span>0:11</span></div>
-              </div>
-            </div>
-            <div class="overlay-caption">
-              <span class="rec-dot"></span>
-              <span>Joint tracking rendered on your own footage</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SAMPLE REPORT + COMING SOON TABS -->
-<section class="report" id="report">
-  <div class="wrap">
-    <div class="sec-head rv">
-      <div class="sec-eyebrow">Sample output &amp; roadmap</div>
-      <h2 class="sec-title">What you get today — and what's coming.</h2>
+    <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:34px">
+      <h2 class="disp d2 rv rv-1" style="margin:0">This is the whole thing.</h2>
+      <p class="body-2 rv rv-2" style="max-width:42ch;margin-left:auto">Every clip comes back like this, whichever room it came from. Flip between them — the format never changes, only the measurements that matter.</p>
     </div>
 
-    <div class="tabs rv" role="tablist" aria-label="Sample output and roadmap">
-      <button class="tab active" data-tab="report-tab" role="tab" id="tabbtn-report" aria-selected="true" aria-controls="report-tab">Your report</button>
-      <button class="tab" data-tab="soon-tab" role="tab" id="tabbtn-soon" aria-selected="false" aria-controls="soon-tab" tabindex="-1">Full app <span class="soon-dot">SOON</span></button>
-    </div>
-
-    <!-- ============ TAB 1: REPORT ============ -->
-    <div class="tab-panel active" id="report-tab" role="tabpanel" aria-labelledby="tabbtn-report">
-    <div class="report-panel">
-      <div class="report-top">
-        <div>
-          <h4>Skating Analysis — Forward Stride</h4>
-          <div class="meta">clip_04.mp4 · 11.2s · 142 frames analyzed</div>
-        </div>
-        <div class="grade">B+<small>OVERALL</small></div>
-      </div>
-      <div class="report-body">
-        <div class="report-cell">
-          <h5>Measured metrics</h5>
-          <div class="stat-line"><span class="stat-k">Knee bend (avg)</span><span class="stat-v good">118°</span></div>
-          <div class="stat-line"><span class="stat-k">Knee bend (range)</span><span class="stat-v">104°–131°</span></div>
-          <div class="stat-line"><span class="stat-k">Hip angle</span><span class="stat-v good">96°</span></div>
-          <div class="stat-line"><span class="stat-k">Forward lean</span><span class="stat-v warn">24°</span></div>
-          <div class="stat-line"><span class="stat-k">Stride length</span><span class="stat-v">1.42 m</span></div>
-          <div class="stat-line"><span class="stat-k">Balance index</span><span class="stat-v good">91 / 100</span></div>
-          <div class="stat-line"><span class="stat-k">Stride recovery</span><span class="stat-v warn">0.38 s</span></div>
-        </div>
-        <div class="report-cell">
-          <h5>Coach's notes</h5>
-          <p class="coach-quote">"Strong knee bend and excellent balance through the push — your base is solid. The thing costing you speed is an upright torso on recovery; you're losing forward drive each stride. Fix the lean and the stride length follows."</p>
-          <div class="drill"><span class="check">▸</span><span><b>Russian box drill</b> — trains a lower, more forward body position under control.</span></div>
-          <div class="drill"><span class="check">▸</span><span><b>Resisted starts</b> — builds the forward lean and first-three-stride drive.</span></div>
-          <div class="drill"><span class="check">▸</span><span><b>Single-leg glides</b> — sharpens recovery timing between strides.</span></div>
-        </div>
+    <div class="rv rv-2" data-tabs>
+      <div class="tabs" role="tablist">
+        <button class="tab on" data-tab="skating"  role="tab" aria-selected="true">Skating</button>
+        <button class="tab"    data-tab="shooting" role="tab" aria-selected="false">Shooting</button>
+        <button class="tab"    data-tab="workouts" role="tab" aria-selected="false">Workouts</button>
       </div>
 
-      <div class="report-charts">
-        <div class="chart-cell">
-          <h5>Knee angle · stride cycle</h5>
-          <div class="csub">degrees vs. % of stride</div>
-          <svg viewBox="0 0 300 170" width="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="kneeFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.35"/>
-                <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-            <g stroke="rgba(139,92,246,0.1)" stroke-width="1">
-              <line x1="34" y1="20" x2="34" y2="140"/>
-              <line x1="34" y1="140" x2="290" y2="140"/>
-              <line x1="34" y1="100" x2="290" y2="100" stroke-dasharray="3 4"/>
-              <line x1="34" y1="60" x2="290" y2="60" stroke-dasharray="3 4"/>
-            </g>
-            <g fill="#8A879A" font-family="'Barlow', sans-serif" font-size="8">
-              <text x="8" y="63">131</text><text x="8" y="103">118</text><text x="8" y="143">104</text>
-            </g>
-            <rect x="34" y="58" width="256" height="34" fill="#34D399" opacity="0.07"/>
-            <path d="M34,118 L70,96 L106,70 L142,64 L178,72 L214,98 L250,124 L290,112 L290,140 L34,140 Z" fill="url(#kneeFill)"/>
-            <path d="M34,118 L70,96 L106,70 L142,64 L178,72 L214,98 L250,124 L290,112" fill="none" stroke="#A78BFA" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-            <circle cx="142" cy="64" r="4" fill="#34D399"/>
-            <text x="142" y="52" fill="#34D399" font-family="'Barlow', sans-serif" font-size="8" text-anchor="middle">131° peak</text>
-          </svg>
-          <div class="chart-legend">
-            <span class="lg"><i style="background:#A78BFA"></i> Your knee bend</span>
-            <span class="lg"><i style="background:rgba(52,211,153,0.5)"></i> Optimal zone</span>
-          </div>
-        </div>
-
-        <div class="chart-cell">
-          <h5>You vs. benchmark</h5>
-          <div class="csub">percentile by category</div>
-          <svg viewBox="0 0 300 170" width="100%" xmlns="http://www.w3.org/2000/svg">
-            <g font-family="'Barlow', sans-serif" font-size="9" fill="#8A879A">
-              <text x="0" y="24">PWR</text><text x="0" y="54">EDG</text><text x="0" y="84">STR</text><text x="0" y="114">BAL</text><text x="0" y="144">POS</text>
-            </g>
-            <g>
-              <rect x="40" y="14" width="240" height="12" rx="6" fill="rgba(139,92,246,0.1)"/>
-              <rect x="40" y="44" width="240" height="12" rx="6" fill="rgba(139,92,246,0.1)"/>
-              <rect x="40" y="74" width="240" height="12" rx="6" fill="rgba(139,92,246,0.1)"/>
-              <rect x="40" y="104" width="240" height="12" rx="6" fill="rgba(139,92,246,0.1)"/>
-              <rect x="40" y="134" width="240" height="12" rx="6" fill="rgba(139,92,246,0.1)"/>
-            </g>
-            <g>
-              <rect x="40" y="14" width="170" height="12" rx="6" fill="#8B5CF6"/>
-              <rect x="40" y="44" width="194" height="12" rx="6" fill="#8B5CF6"/>
-              <rect x="40" y="74" width="146" height="12" rx="6" fill="#F2B33D"/>
-              <rect x="40" y="104" width="218" height="12" rx="6" fill="#34D399"/>
-              <rect x="40" y="134" width="132" height="12" rx="6" fill="#F2B33D"/>
-            </g>
-            <line x1="196" y1="8" x2="196" y2="152" stroke="#FFFFFF" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.5"/>
-            <text x="196" y="166" fill="#8A879A" font-family="'Barlow', sans-serif" font-size="8" text-anchor="middle">avg</text>
-          </svg>
-          <div class="chart-legend">
-            <span class="lg"><i style="background:#34D399"></i> Above avg</span>
-            <span class="lg"><i style="background:#F2B33D"></i> Below avg</span>
-          </div>
-        </div>
-
-        <div class="chart-cell">
-          <h5>Balance stability</h5>
-          <div class="csub">weight distribution</div>
-          <svg viewBox="0 0 300 170" width="100%" xmlns="http://www.w3.org/2000/svg">
-            <g transform="translate(150,88)">
-              <circle r="56" fill="none" stroke="rgba(139,92,246,0.12)" stroke-width="16"/>
-              <circle r="56" fill="none" stroke="#34D399" stroke-width="16" stroke-linecap="round" stroke-dasharray="320 352" stroke-dashoffset="0" transform="rotate(-90)"/>
-              <text class="donut-center" y="-2" text-anchor="middle" fill="#FFFFFF" font-size="34">91</text>
-              <text y="18" text-anchor="middle" fill="#8A879A" font-family="'Barlow', sans-serif" font-size="9">/ 100</text>
-            </g>
-          </svg>
-          <div class="chart-legend">
-            <span class="lg"><i style="background:#34D399"></i> Centered &amp; stable through push</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="continues">
-        <div class="continues-peek">
-          <div class="peek-row">
-            <div class="peek-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18M6 20V9M12 20V4M18 20v-7"/></svg></div>
-            <div class="peek-txt"><b>Strengths &amp; development areas</b><span>Every metric scored, ranked, and explained in plain language</span></div>
-          </div>
-          <div class="peek-row">
-            <div class="peek-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></div>
-            <div class="peek-txt"><b>Your 3-week focus plan</b><span>What to drill first, second and third — with the goal for each week</span></div>
-          </div>
-          <div class="peek-row">
-            <div class="peek-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></div>
-            <div class="peek-txt"><b>Raw measurements</b><span>Every angle and count behind the scores, so nothing is a black box</span></div>
-          </div>
-        </div>
-        <div class="continues-label">
-          <span class="pages-pill">Preview</span>
-          <span>You're seeing part of it — the full PDF runs <b>5 pages</b> per video.</span>
-        </div>
-      </div>
-    </div>
-
-    <p class="format-note rv">This example is a skating clip. <b>Shooting and workout clips come back in the same format</b> — same charts, same drills, same chat — with the metrics that matter for those: release time and weight transfer for shots, depth and rep tempo for lifts.</p>
-    </div><!-- /report-tab -->
-
-    <!-- ============ TAB 2: COMING SOON ============ -->
-    <div class="tab-panel" id="soon-tab" role="tabpanel" aria-labelledby="tabbtn-soon">
-      <div class="soon-hero">
-        <div class="soon-top">
+      <!-- ─────────────────────────── SKATING ─────────────────────────── -->
+      <div class="rep on" data-panel="skating" role="tabpanel">
+        <div class="rep-hd">
           <div>
-            <h4>The full Atlas app</h4>
-            <p>Here's what's being built next — and what every beta tester is helping shape.</p>
+            <div class="file">Forward stride <i>/</i> clip_04.mp4 <i>/</i> 11.2s <i>/</i> 142 frames</div>
+            <h3 class="disp d3">Performance breakdown</h3>
           </div>
-          <span class="soon-badge">In development</span>
+          <div class="rep-grade">
+            <span class="o">Overall</span>
+            <span class="g">B+</span>
+            <span class="s data">87/100</span>
+          </div>
         </div>
 
-        <div class="soon-grid">
-          <div class="soon-cell">
-            <div class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-5 4 4 8-8"/><path d="M15 8h5v5"/></svg></div>
-            <h6>Stat tracking over time</h6>
-            <p class="cap">Every clip you submit feeds a running history. Watch your overall score and each metric trend week over week.</p>
-            <svg class="progress-svg" viewBox="0 0 320 130" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="progFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#34D399" stop-opacity="0.3"/>
-                  <stop offset="100%" stop-color="#34D399" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-              <g stroke="rgba(139,92,246,0.1)" stroke-width="1">
-                <line x1="28" y1="20" x2="28" y2="105"/><line x1="28" y1="105" x2="310" y2="105"/><line x1="28" y1="65" x2="310" y2="65" stroke-dasharray="3 4"/>
-              </g>
-              <g fill="#8A879A" font-family="'Barlow', sans-serif" font-size="8">
-                <text x="6" y="24">95</text><text x="6" y="68">80</text><text x="6" y="108">65</text>
-              </g>
-              <path d="M28,92 L75,84 L122,70 L169,58 L216,46 L263,38 L310,28 L310,105 L28,105 Z" fill="url(#progFill)"/>
-              <path d="M28,92 L75,84 L122,70 L169,58 L216,46 L263,38 L310,28" fill="none" stroke="#34D399" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-              <g fill="#34D399"><circle cx="28" cy="92" r="3"/><circle cx="122" cy="70" r="3"/><circle cx="216" cy="46" r="3"/><circle cx="310" cy="28" r="4"/></g>
-              <text x="310" y="20" fill="#34D399" font-family="'Barlow', sans-serif" font-size="8" text-anchor="end">+18 pts</text>
-              <g fill="#8A879A" font-family="'Barlow', sans-serif" font-size="8" text-anchor="middle">
-                <text x="28" y="122">W1</text><text x="122" y="122">W3</text><text x="216" y="122">W5</text><text x="310" y="122">W7</text>
-              </g>
-            </svg>
+        <div class="rep-top">
+          <!-- CLIP SLOT. Drop public/img/clip-skating.mp4 in and it plays here;
+               until then the frame below says what belongs in it. -->
+          <div class="clip">
+            <video src="/img/clip-skating.mp4" muted loop playsinline preload="metadata"
+                   onerror="this.remove()"></video>
+            <div class="clip-empty">
+              <span class="k">Clip slot</span>
+              <span class="t">Skating &mdash; annotated</span>
+              <span class="d">1280 &times; 720 &middot; mp4 &middot; 6&ndash;10s loop</span>
+            </div>
+            <span class="clip-tag">Forward stride &middot; annotated</span>
           </div>
 
-          <div class="soon-cell">
-            <div class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M4 10h16M9 5v14"/></svg></div>
-            <h6>Personalized drill library</h6>
-            <p class="cap">A growing library of video drills — on-ice and off-ice — auto-matched to your weak points and checked off as you improve them.</p>
-            <div class="drill-chips">
-              <span class="chip">Russian box <span class="pct">↑ priority</span></span>
-              <span class="chip">Resisted starts <span class="pct">↑ priority</span></span>
-              <span class="chip">Single-leg glides</span>
-              <span class="chip">Quick-release reps</span>
-              <span class="chip">Tight turns</span>
-              <span class="chip">Box jumps</span>
-              <span class="chip">C-cuts</span>
-              <span class="chip">Crossover ladders</span>
-            </div>
-            <div style="margin-top:18px; height:7px; border-radius:100px; background:rgba(139,92,246,0.1); overflow:hidden">
-              <div style="height:100%; width:42%; border-radius:100px; background:linear-gradient(90deg,var(--rink-deep),var(--rink))"></div>
-            </div>
-            <div style="font-size:11px; color:var(--muted); margin-top:8px">5 of 12 prescribed drills mastered</div>
+          <div class="tiles">
+          <div class="tile">
+            <div class="k">Knee flexion</div>
+            <div class="v data">118<sup>&deg;</sup></div>
+            <div class="bar" style="--w:88%"><i></i></div>
+            <div class="cap">Power zone &mdash; strong through the push</div>
+          </div>
+          <div class="tile">
+            <div class="k">Stride recovery</div>
+            <div class="v data">0.38<sup>s</sup></div>
+            <div class="bar ref" style="--w:54%"><i></i></div>
+            <div class="cap">Slow &mdash; this is the one to fix first</div>
+          </div>
+        </div>
+        </div>
+
+        <div class="rep-body">
+          <div class="rep-cell">
+            <h5>Every measurement</h5>
+            <div class="mrow"><span class="k">Knee bend (avg)</span><span class="v up">118&deg;</span></div>
+            <div class="mrow"><span class="k">Knee bend (range)</span><span class="v">104&deg;&ndash;131&deg;</span></div>
+            <div class="mrow"><span class="k">Hip angle</span><span class="v up">96&deg;</span></div>
+            <div class="mrow"><span class="k">Forward lean</span><span class="v dn">24&deg;</span></div>
+            <div class="mrow"><span class="k">Stride length</span><span class="v">1.42 m</span></div>
+            <div class="mrow"><span class="k">Balance index</span><span class="v up">91 / 100</span></div>
+            <div class="mrow"><span class="k">Stride recovery</span><span class="v dn">0.38 s</span></div>
           </div>
 
-          <div class="soon-cell">
-            <div class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
-            <h6>Nearby events &amp; clinics</h6>
-            <p class="cap">Skills clinics, open skates, camps and showcases near you — pulled into one feed so you never miss a chance to train.</p>
-            <div class="map-mini">
-              <svg viewBox="0 0 320 96" width="100%" xmlns="http://www.w3.org/2000/svg">
-                <rect width="320" height="96" fill="#0a0912"/>
-                <g stroke="rgba(139,92,246,0.08)" stroke-width="1">
-                  <line x1="0" y1="32" x2="320" y2="32"/><line x1="0" y1="64" x2="320" y2="64"/>
-                  <line x1="80" y1="0" x2="80" y2="96"/><line x1="160" y1="0" x2="160" y2="96"/><line x1="240" y1="0" x2="240" y2="96"/>
-                </g>
-                <path d="M0,60 Q80,40 160,55 T320,45" fill="none" stroke="rgba(139,92,246,0.2)" stroke-width="6"/>
-                <g>
-                  <circle cx="70" cy="48" r="6" fill="#8B5CF6"/><circle cx="70" cy="48" r="11" fill="none" stroke="#8B5CF6" stroke-opacity="0.4"/>
-                  <circle cx="185" cy="40" r="6" fill="#34D399"/><circle cx="185" cy="40" r="11" fill="none" stroke="#34D399" stroke-opacity="0.4"/>
-                  <circle cx="258" cy="66" r="6" fill="#8B5CF6"/><circle cx="258" cy="66" r="11" fill="none" stroke="#8B5CF6" stroke-opacity="0.4"/>
-                </g>
-              </svg>
+          <div class="rep-cell">
+            <h5>Coach's note</h5>
+            <p class="note">Your base is strong through the push. Recovery gets too upright — there is speed still on the ice.</p>
+            <div style="margin-top:20px">
+              <div class="drill"><span class="sq"></span><span><b>Russian box drill</b> — trains a lower, more forward body position under control.</span></div>
+              <div class="drill"><span class="sq"></span><span><b>Resisted starts</b> — builds the forward lean and first-three-stride drive.</span></div>
+              <div class="drill"><span class="sq"></span><span><b>Single-leg glides</b> — sharpens recovery timing between strides.</span></div>
             </div>
-            <div class="event-row"><span class="event-dot"></span><span class="ename">Power Skating Clinic</span><span class="edist">2.4 mi · Sat</span></div>
-            <div class="event-row"><span class="event-dot" style="background:#34D399;box-shadow:0 0 8px #34D399"></span><span class="ename">Spring Skills Showcase</span><span class="edist">6.1 mi · Apr 12</span></div>
-            <div class="event-row"><span class="event-dot"></span><span class="ename">Stick &amp; Puck — Open Ice</span><span class="edist">3.8 mi · Daily</span></div>
+            <div class="next-drill"><span class="sq"></span> Next: Russian box drill &middot; 4 &times; 30 sec</div>
+          </div>
+        </div>
+
+        <div class="rep-ft">
+          <div class="peek">
+            <span><span class="sq"></span> Strengths &amp; development areas</span>
+            <span><span class="sq"></span> 3-week focus plan</span>
+            <span><span class="sq"></span> Raw measurements</span>
+          </div>
+          <span class="pages">You're seeing page 1 &mdash; the full PDF runs <b>5 pages</b>.</span>
+        </div>
+      </div>
+
+      <!-- ────────────────────────── SHOOTING ─────────────────────────── -->
+      <div class="rep" data-panel="shooting" role="tabpanel">
+        <div class="rep-hd">
+          <div>
+            <div class="file">Wrist shot <i>/</i> clip_12.mp4 <i>/</i> 8.4s <i>/</i> 106 frames</div>
+            <h3 class="disp d3">Performance breakdown</h3>
+          </div>
+          <div class="rep-grade">
+            <span class="o">Overall</span>
+            <span class="g">A&minus;</span>
+            <span class="s data">91/100</span>
+          </div>
+        </div>
+
+        <div class="rep-top">
+          <!-- CLIP SLOT. Drop public/img/clip-shooting.mp4 in and it plays here;
+               until then the frame below says what belongs in it. -->
+          <div class="clip">
+            <video src="/img/clip-shooting.mp4" muted loop playsinline preload="metadata"
+                   onerror="this.remove()"></video>
+            <div class="clip-empty">
+              <span class="k">Clip slot</span>
+              <span class="t">Shooting &mdash; annotated</span>
+              <span class="d">1280 &times; 720 &middot; mp4 &middot; 6&ndash;10s loop</span>
+            </div>
+            <span class="clip-tag">Wrist shot &middot; annotated</span>
           </div>
 
-          <div class="soon-cell">
-            <div class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20v-6M10 20V8M16 20v-9M22 20V4"/></svg></div>
-            <h6>Rankings &amp; benchmarks</h6>
-            <p class="cap">See where you stand against skaters at your level — same age group, same position.</p>
-            <div style="background:var(--ink);border:1px solid var(--line);border-radius:14px;padding:18px 20px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-                <span style="font-weight:700;text-transform:uppercase;letter-spacing:0.1em;font-size:11px;color:var(--ice-pale)">U16 · Forwards</span>
-                <span style="font-size:11px;color:var(--rink)">▲ up 4</span>
-              </div>
-              <div class="lb-row"><span class="lb-rank top">1</span><span class="lb-name">A. Petrov</span><span class="lb-score">94.2</span></div>
-              <div class="lb-row"><span class="lb-rank top">2</span><span class="lb-name">You</span><span class="lb-score">91.0</span></div>
-              <div class="lb-row"><span class="lb-rank">3</span><span class="lb-name">M. Chen</span><span class="lb-score">89.7</span></div>
-              <div class="lb-row"><span class="lb-rank">4</span><span class="lb-name">J. Okafor</span><span class="lb-score">88.1</span></div>
+          <div class="tiles">
+          <div class="tile">
+            <div class="k">Release time</div>
+            <div class="v data">0.32<sup>s</sup></div>
+            <div class="bar" style="--w:91%"><i></i></div>
+            <div class="cap">Quick hands &mdash; clean release</div>
+          </div>
+          <div class="tile">
+            <div class="k">Weight transfer</div>
+            <div class="v data">84<sup>%</sup></div>
+            <div class="bar ref" style="--w:72%"><i></i></div>
+            <div class="cap">Load stays back a beat too long</div>
+          </div>
+        </div>
+        </div>
+
+        <div class="rep-body">
+          <div class="rep-cell">
+            <h5>Every measurement</h5>
+            <div class="mrow"><span class="k">Release time</span><span class="v up">0.32 s</span></div>
+            <div class="mrow"><span class="k">Weight transfer</span><span class="v dn">84 %</span></div>
+            <div class="mrow"><span class="k">Hand separation</span><span class="v">42 cm</span></div>
+            <div class="mrow"><span class="k">Follow-through height</span><span class="v up">Chest</span></div>
+            <div class="mrow"><span class="k">Front-knee flex</span><span class="v">124&deg;</span></div>
+            <div class="mrow"><span class="k">Torso rotation</span><span class="v up">38&deg;</span></div>
+            <div class="mrow"><span class="k">Blade contact</span><span class="v">Mid-heel</span></div>
+          </div>
+
+          <div class="rep-cell">
+            <h5>Coach's note</h5>
+            <p class="note">Quick hands and a clean release. Load stays back too long on the inside edge before transfer.</p>
+            <div style="margin-top:20px">
+              <div class="drill"><span class="sq"></span><span><b>One-knee snap series</b> — isolates the hands so the transfer can't hide behind the legs.</span></div>
+              <div class="drill"><span class="sq"></span><span><b>Weight-shift walk-throughs</b> — slow reps that force the load onto the front foot.</span></div>
+              <div class="drill"><span class="sq"></span><span><b>Quick-release reps</b> — trains the release without losing the transfer you just built.</span></div>
             </div>
+            <div class="next-drill"><span class="sq"></span> Next: One-knee snap series &middot; 3 &times; 8</div>
+          </div>
+        </div>
+
+        <div class="rep-ft">
+          <div class="peek">
+            <span><span class="sq"></span> Strengths &amp; development areas</span>
+            <span><span class="sq"></span> 3-week focus plan</span>
+            <span><span class="sq"></span> Raw measurements</span>
+          </div>
+          <span class="pages">You're seeing page 1 &mdash; the full PDF runs <b>5 pages</b>.</span>
+        </div>
+      </div>
+
+      <!-- ────────────────────────── WORKOUTS ─────────────────────────── -->
+      <div class="rep" data-panel="workouts" role="tabpanel">
+        <div class="rep-hd">
+          <div>
+            <div class="file">Seated dumbbell deadlift <i>/</i> clip_07.mp4 <i>/</i> 14.6s <i>/</i> 184 frames</div>
+            <h3 class="disp d3">Performance breakdown</h3>
+          </div>
+          <div class="rep-grade">
+            <span class="o">Overall</span>
+            <span class="g">B</span>
+            <span class="s data">83/100</span>
+          </div>
+        </div>
+
+        <div class="rep-top">
+          <!-- CLIP SLOT. Drop public/img/clip-workouts.mp4 in and it plays here;
+               until then the frame below says what belongs in it. -->
+          <div class="clip">
+            <video src="/img/clip-workouts.mp4" muted loop playsinline preload="metadata"
+                   onerror="this.remove()"></video>
+            <div class="clip-empty">
+              <span class="k">Clip slot</span>
+              <span class="t">Workouts &mdash; annotated</span>
+              <span class="d">1280 &times; 720 &middot; mp4 &middot; 6&ndash;10s loop</span>
+            </div>
+            <span class="clip-tag">Seated deadlift &middot; annotated</span>
+          </div>
+
+          <div class="tiles">
+          <div class="tile">
+            <div class="k">Hinge angle</div>
+            <div class="v data">96<sup>&deg;</sup></div>
+            <div class="bar" style="--w:80%"><i></i></div>
+            <div class="cap">Consistent rep to rep</div>
+          </div>
+          <div class="tile">
+            <div class="k">Rep tempo</div>
+            <div class="v data">2.1<sup>s</sup></div>
+            <div class="bar ref" style="--w:58%"><i></i></div>
+            <div class="cap">Descent rushes on the last three reps</div>
+          </div>
+        </div>
+        </div>
+
+        <div class="rep-body">
+          <div class="rep-cell">
+            <h5>Every measurement</h5>
+            <div class="mrow"><span class="k">Hinge angle (avg)</span><span class="v up">96&deg;</span></div>
+            <div class="mrow"><span class="k">Hinge angle consistency</span><span class="v up">&plusmn;4&deg;</span></div>
+            <div class="mrow"><span class="k">Rep tempo</span><span class="v dn">2.1 s</span></div>
+            <div class="mrow"><span class="k">Torso angle</span><span class="v">12&deg;</span></div>
+            <div class="mrow"><span class="k">Neck position</span><span class="v up">Neutral</span></div>
+            <div class="mrow"><span class="k">Lower-back rounding</span><span class="v dn">3.1&deg;</span></div>
+            <div class="mrow"><span class="k">Reps counted</span><span class="v">8</span></div>
+          </div>
+
+          <div class="rep-cell">
+            <h5>Coach's note</h5>
+            <p class="note">Hinge angle and neck position hold up all the way through. The descent speeds up as you fatigue, and the lower back starts to round with it.</p>
+            <div style="margin-top:20px">
+              <div class="drill"><span class="sq"></span><span><b>Tempo seated deadlifts</b> — three seconds down, hold one, so fatigue can't shorten the rep.</span></div>
+              <div class="drill"><span class="sq"></span><span><b>Wall-supported holds</b> — takes the drift out before you load it again.</span></div>
+              <div class="drill"><span class="sq"></span><span><b>Dead bug holds</b> — builds the trunk control that keeps the low back from rounding under load.</span></div>
+            </div>
+            <div class="next-drill"><span class="sq"></span> Next: Tempo seated deadlifts &middot; 3 &times; 8</div>
+          </div>
+        </div>
+
+        <div class="rep-ft">
+          <div class="peek">
+            <span><span class="sq"></span> Strengths &amp; development areas</span>
+            <span><span class="sq"></span> 3-week focus plan</span>
+            <span><span class="sq"></span> Raw measurements</span>
+          </div>
+          <span class="pages">You're seeing page 1 &mdash; the full PDF runs <b>5 pages</b>.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ 04 · THE BOARD ═══ -->
+<section id="board" class="board-sec pad" data-rail-name="The report doesn't guess" data-rail-meta="04 / The board">
+  <div class="shell">
+    <div class="board-grid">
+      <div>
+        <div class="slash rv" style="margin-bottom:22px">The read <i>/</i> 04</div>
+        <h2 class="disp d2 rv rv-1">The report doesn't <em class="hollow" style="font-style:normal">guess</em>.</h2>
+        <p class="lede rv rv-2" style="margin-top:22px">Your clip comes back with the actual frames, the measurements taken off them, coaching notes in plain language, and a drill prescription that matches the issue.</p>
+
+        <div class="board-list">
+          <div class="board-item rv rv-2">
+            <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.6"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg></span>
+            <div><h4>Mechanical metrics</h4><p>The angle, the timing and the balance behind every score.</p></div>
+          </div>
+          <div class="board-item rv rv-3">
+            <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 3.5v6c0 5-3.4 9.3-8 10.5-4.6-1.2-8-5.5-8-10.5v-6z"/></svg></span>
+            <div><h4>Coaching notes</h4><p>The one change that earns the next layer of work.</p></div>
+          </div>
+          <div class="board-item rv rv-4">
+            <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg></span>
+            <div><h4>Annotated clip</h4><p>Watch the overlay follow your movement, frame by frame.</p></div>
           </div>
         </div>
       </div>
 
-      <p style="text-align:center;color:var(--muted);font-size:14px;margin-top:26px;max-width:54ch;margin-left:auto;margin-right:auto">
-        Every beta video you send shapes what gets built first. Beta members get the full app at their locked-in rate when it launches.
-      </p>
-    </div><!-- /soon-tab -->
+      <!-- An actual exchange with Atlas Chat, kept on the same clip the sample
+           report above breaks down, so the two agree with each other. -->
+      <div class="board-wrap rv rv-2 stage">
+        <div class="greaseboard tilt">
+          <div class="chat" data-chat>
+            <div class="chat-hd">
+              <span class="chat-t">Atlas Chat</span>
+              <span class="chat-pill">Knows your latest report</span>
+            </div>
+
+            <div class="chat-body" data-chat-body>
+              <div class="bub bub-coach" data-from="coach">Knee bend and balance are already where they need to be. What&rsquo;s costing you speed is recovery &mdash; 0.38s, and your torso comes up before the next push.</div>
+              <div class="bub bub-you" data-from="you">what do i fix first</div>
+              <div class="bub bub-coach" data-from="coach">Russian box drill. Four sets of thirty seconds, stay low the whole way. It trains the exact position you&rsquo;re losing on the recovery.</div>
+              <div class="bub bub-you" data-from="you">how will i know it worked</div>
+              <div class="bub bub-coach" data-from="coach">Send another stride clip after three sessions. If the recovery comes down and the lean holds, you&rsquo;ll feel it in your first three strides.</div>
+            </div>
+
+            <div class="chat-row">
+              <span class="chat-fld" data-chat-field data-placeholder="Ask about your skating&hellip;">Ask about your skating&hellip;</span>
+              <span class="chat-send">Send</span>
+            </div>
+          </div>
+          <span class="gb-caption">Sample conversation</span>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- PRICING -->
-<section class="pricing" id="pricing">
-  <div class="wrap">
-    <div class="price-card rv">
-      <div class="price-label">Beta pricing</div>
-      <div class="trial-flag">First 5 days free</div>
-      <div class="price-big"><sup>$</sup>15</div>
-      <div class="price-per">per month after your trial</div>
-      <div class="price-unlim">Unlimited clips. Cancel anytime.</div>
-      <ul class="price-list">
-        <li><span class="check">▸</span> Skating, shooting and workout clips — all included</li>
-        <li><span class="check">▸</span> Submit as many clips as you want</li>
-        <li><span class="check">▸</span> Full metrics + AI coaching on each</li>
-        <li><span class="check">▸</span> Annotated video with joint tracking</li>
-        <li><span class="check">▸</span> Atlas Chat — your report, on call</li>
-        <li><span class="check">▸</span> 5-page PDF report you can share</li>
-        <li><span class="check">▸</span> Direct line to me for feedback</li>
-        <li><span class="check">▸</span> Founding member rate — $15/mo locked in for life</li>
+<!-- ══════════════════════════════════════════════════ 05 · NEXT SHIFT ═══ -->
+<section class="pad" data-rail-name="What's being built next" data-rail-meta="05 / Next shift">
+  <div class="shell">
+    <div class="head rv">
+      <span class="slash">Roadmap <i>/</i> 05</span>
+      <span class="head-aside">Shaped by beta clips</span>
+    </div>
+    <hr class="rule-heavy rv" style="margin-bottom:34px">
+    <h2 class="disp d2 rv rv-1" style="margin-bottom:26px">What's coming <em class="hollow" style="font-style:normal">next</em>.</h2>
+
+
+    <div class="soons">
+      <article class="soon rv rv-1">
+        <span class="lbl">Coming soon</span>
+        <h4 class="disp d4">Stat tracking over time</h4>
+        <p>Every clip you submit would feed a running history, so you could watch your overall score and each metric trend week over week.</p>
+        <div class="sketch">
+          <svg viewBox="0 0 320 90" width="100%" aria-hidden="true">
+            <g stroke="#34343C" stroke-width="1"><line x1="18" y1="14" x2="18" y2="74"/><line x1="18" y1="74" x2="306" y2="74"/><line x1="18" y1="44" x2="306" y2="44" stroke-dasharray="3 4"/></g>
+            <path d="M18 68 L66 62 L114 52 L162 43 L210 34 L258 27 L306 20" fill="none" stroke="#DC3B2A" stroke-width="2.4" stroke-dasharray="5 5"/>
+            <g fill="#DC3B2A"><circle cx="18" cy="68" r="3"/><circle cx="162" cy="43" r="3"/><circle cx="306" cy="20" r="3.5"/></g>
+          </svg>
+        </div>
+      </article>
+
+      <article class="soon rv rv-2">
+        <span class="lbl">Coming soon</span>
+        <h4 class="disp d4">Personalized drill library</h4>
+        <p>A growing library of video drills — on-ice and off-ice — auto-matched to your weak points and checked off as you improve them.</p>
+        <div class="sketch">
+          <div class="skrow"><span class="l">Drill</span><span class="skbar me" style="flex:0 0 62%"></span></div>
+          <div class="skrow"><span class="l">Drill</span><span class="skbar" style="flex:0 0 40%"></span></div>
+          <div class="skrow"><span class="l">Drill</span><span class="skbar" style="flex:0 0 74%"></span></div>
+          <div class="skrow"><span class="l">Drill</span><span class="skbar me" style="flex:0 0 28%"></span></div>
+        </div>
+      </article>
+
+      <article class="soon rv rv-3">
+        <span class="lbl">Coming soon</span>
+        <h4 class="disp d4">Nearby events &amp; clinics</h4>
+        <p>Skills clinics, open skates, camps and showcases near you, pulled into one feed so you never miss a chance to train.</p>
+        <div class="sketch">
+          <svg viewBox="0 0 320 84" width="100%" aria-hidden="true">
+            <g stroke="#26262C" stroke-width="1"><line x1="0" y1="28" x2="320" y2="28"/><line x1="0" y1="56" x2="320" y2="56"/><line x1="80" y1="0" x2="80" y2="84"/><line x1="160" y1="0" x2="160" y2="84"/><line x1="240" y1="0" x2="240" y2="84"/></g>
+            <path d="M0 54 Q80 34 160 48 T320 38" fill="none" stroke="#34343C" stroke-width="6"/>
+            <g><circle cx="70" cy="42" r="5" fill="#DC3B2A"/><circle cx="70" cy="42" r="10" fill="none" stroke="#DC3B2A" stroke-opacity="0.4"/>
+               <circle cx="185" cy="34" r="5" fill="#8A8985"/><circle cx="258" cy="60" r="5" fill="#DC3B2A"/></g>
+          </svg>
+        </div>
+      </article>
+
+      <article class="soon rv rv-4">
+        <span class="lbl">Coming soon</span>
+        <h4 class="disp d4">Rankings &amp; benchmarks</h4>
+        <p>See where you stand against skaters at your level — same age group, same position. This needs a lot more players on Atlas before it can mean anything.</p>
+        <div class="sketch">
+          <div class="skrow"><span class="l">&mdash;</span><span class="skbar" style="flex:0 0 88%"></span></div>
+          <div class="skrow"><span class="l me">You</span><span class="skbar me" style="flex:0 0 79%"></span></div>
+          <div class="skrow"><span class="l">&mdash;</span><span class="skbar" style="flex:0 0 71%"></span></div>
+          <div class="skrow"><span class="l">&mdash;</span><span class="skbar" style="flex:0 0 64%"></span></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ 06 · TERMS ════ -->
+<section id="terms" class="pad" data-rail-name="Fifteen a month. That's it." data-rail-meta="06 / The terms">
+  <div class="shell">
+    <div class="head rv">
+      <span class="slash">Pricing <i>/</i> 06</span>
+      <span class="head-aside">One price &mdash; unlimited clips</span>
+    </div>
+    <hr class="rule-heavy rv" style="margin-bottom:44px">
+
+    <div class="price rv rv-1">
+      <span class="flag">First 5 days free</span>
+      <div class="slash" style="color:var(--bone-4)">Beta pricing</div>
+      <div class="amt data"><sup>$</sup>15</div>
+      <div class="per">per month after your trial</div>
+      <p class="body-2" style="margin-top:14px">Unlimited clips. Cancel anytime.</p>
+
+      <ul>
+        <li><span class="sq"></span> Skating, shooting and workout clips — all included</li>
+        <li><span class="sq"></span> Submit as many clips as you want</li>
+        <li><span class="sq"></span> Full metrics + AI coaching on each</li>
+        <li><span class="sq"></span> Annotated video with joint tracking</li>
+        <li><span class="sq"></span> Atlas Chat — your report, on call</li>
+        <li><span class="sq"></span> 5-page PDF report you can share</li>
+        <li><span class="sq"></span> Direct line to me for feedback</li>
+        <li><span class="sq"></span> Founding member rate — $15/mo locked in for life</li>
       </ul>
-      <a href="/signup.html" class="btn-primary" style="display:inline-block">Start your 5-day free trial</a>
-      <p class="price-fine">Card required to start. Cancel any time before day 5 and you won't be charged — manage or cancel yourself from your dashboard.</p>
+
+      <a href="/signup.html" class="btn btn-red">
+        Start your 5-day free trial
+        <svg class="arw" width="15" height="10" viewBox="0 0 15 10" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M0 5h13M9 1l4 4-4 4"/></svg>
+      </a>
+      <p class="fine">Card required to start. Cancel any time before day 5 and you won't be charged — manage or cancel yourself from your dashboard.</p>
     </div>
   </div>
 </section>
 
-<!-- FOOTER -->
-<footer>
-  <div class="wrap foot-inner">
-    <div class="brand">
-      <img src="/img/atlas-mark.png" alt="" style="height:26px;width:auto;display:block;">
-      <span style="font-family:'Archivo Black', sans-serif;font-weight:800;font-size:16px">ATLAS</span>
-      <span class="beta-flag">Beta</span>
+<!-- ═══════════════════════════════════════════════════ CLOSER + FOOTER ══ -->
+<section class="pad closer" data-rail-name="Send your first clip" data-rail-meta="07 / Last change">
+  <div class="shell">
+    <div class="slash rv" style="margin-bottom:20px">Last change <i>/</i> 07</div>
+    <h2 class="disp d2 rv rv-1 closer-h">Send one clip. See what a <em class="hollow" style="font-style:normal">real</em> breakdown looks like.</h2>
+    <p class="lede rv rv-2" style="margin-left:auto;margin-right:auto">Free for five days. If it isn't telling you something your own eyes missed, cancel and you won't be charged.</p>
+    <div class="hero-cta rv rv-3" style="justify-content:center">
+      <a href="/signup.html" class="btn btn-red">
+        Start 5-day trial
+        <svg class="arw" width="15" height="10" viewBox="0 0 15 10" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M0 5h13M9 1l4 4-4 4"/></svg>
+      </a>
+      <a href="/login.html" class="btn btn-line">Log in</a>
     </div>
-    <p>Questions? <a href="mailto:AtlasSportsCoaching@gmail.com">AtlasSportsCoaching@gmail.com</a> · Built in Boston 🏒</p>
+  </div>
+</section>
+
+<footer>
+  <div class="shell foot">
+    <a href="/" class="mark"><img src="/img/atlas-mark.png" alt="" style="height:22px"><span style="font-size:19px">Atlas</span></a>
+    <span class="tag tag-red">Beta</span>
+    <p>Questions? <a href="mailto:AtlasSportsCoaching@gmail.com">AtlasSportsCoaching@gmail.com</a></p>
+    <span class="m">Built in Boston</span>
   </div>
 </footer>
 
-<script>
-/* ---------- TABS ---------- */
-(function(){
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
-  function select(t){
-    tabs.forEach(function(x){
-      x.classList.remove('active');
-      x.setAttribute('aria-selected','false');
-      x.tabIndex = -1;
-    });
-    document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
-    t.classList.add('active');
-    t.setAttribute('aria-selected','true');
-    t.tabIndex = 0;
-    document.getElementById(t.dataset.tab).classList.add('active');
-  }
-  tabs.forEach(function(t, i){
-    t.addEventListener('click', function(){ select(t); });
-    t.addEventListener('keydown', function(e){
-      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-      e.preventDefault();
-      var n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
-      select(n); n.focus();
-    });
-  });
-})();
-
-/* ---------- NAV SCROLL STATE ---------- */
-(function(){
-  var nav = document.getElementById('nav');
-  var onScroll = function(){ nav.classList.toggle('stuck', window.scrollY > 12); };
-  window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
-})();
-
-/* ---------- SCROLL REVEAL ---------- */
-(function(){
-  var els = document.querySelectorAll('.rv');
-  if (!('IntersectionObserver' in window) ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    els.forEach(function(e){ e.classList.add('in'); });
-    return;
-  }
-  var io = new IntersectionObserver(function(entries){
-    entries.forEach(function(en){
-      if (!en.isIntersecting) return;
-      var sibs = Array.prototype.slice.call(en.target.parentNode.children).filter(function(c){ return c.classList.contains('rv'); });
-      en.target.style.transitionDelay = (Math.min(sibs.indexOf(en.target), 5) * 70) + 'ms';
-      en.target.classList.add('in');
-      io.unobserve(en.target);
-    });
-  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
-  els.forEach(function(e){ io.observe(e); });
-})();
-
-/* =======================================================================
-   ATLAS 3D — live pose skeleton
-   A procedurally animated hockey stride, rebuilt as a joint skeleton.
-   ======================================================================= */
-/* =======================================================================
-   ATLAS HERO — live tracking pass over the athlete
-   Joint coordinates are normalised to the athlete image, so the overlay
-   stays locked to the body at any size.
-   ======================================================================= */
-(function(){
-  var fig    = document.getElementById('heroFig');
-  var img    = document.getElementById('athlete');
-  var canvas = document.getElementById('track');
-  if (!fig || !img || !canvas) return;
-  var scan = document.getElementById('figScan');
-  var ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  var REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  /* joints, as fractions of the athlete image */
-  var JOINTS = [
-    [0.318,0.123],[0.380,0.170],[0.369,0.212],[0.386,0.419],[0.319,0.519],
-    [0.526,0.419],[0.633,0.364],[0.406,0.581],[0.497,0.833],[0.694,0.676],
-    [0.898,0.843]
-  ];
-  var KEY = { 7:1, 8:1, 9:1, 10:1 };          // knees and ankles: the scored ones
-
-  var W=0, H=0, dpr=1;
-  function size(){
-    var r = fig.getBoundingClientRect();
-    if (!r.width) return;
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = r.width; H = r.height;
-    canvas.width  = Math.round(W*dpr);
-    canvas.height = Math.round(H*dpr);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-  }
-
-  function frame(t){
-    if (!W || !H) { size(); if (!W) return; }
-    ctx.clearRect(0,0,W,H);
-
-    /* the sweep drives the silhouette-masked layer; joints react to it */
-    var sweep = ((t/3400) % 1);
-    var sy = sweep * H;
-    if (scan) scan.style.backgroundPositionY = (sweep*100).toFixed(2) + '%';
-
-    for (var i=0;i<JOINTS.length;i++){
-      var x = JOINTS[i][0]*W, y = JOINTS[i][1]*H;
-      var key = !!KEY[i];
-      /* joints light up as the pass crosses them, then settle */
-      var d = Math.abs(y - sy);
-      var hit = Math.max(0, 1 - d/70);
-      var base = key ? 0.55 : 0.28;
-      var a = Math.min(1, base + hit*0.75);
-      var col = key ? '52,211,153' : '167,139,250';
-
-      if (hit > 0.02){
-        ctx.beginPath();
-        ctx.arc(x, y, 5 + hit*13, 0, 6.2832);
-        ctx.strokeStyle = 'rgba('+col+','+(hit*0.5)+')';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-      }
-      ctx.beginPath();
-      ctx.arc(x, y, key ? 3.4 : 2.6, 0, 6.2832);
-      ctx.fillStyle = 'rgba('+col+','+a+')';
-      ctx.fill();
-    }
-  }
-
-  /* pointer parallax: the athlete drifts, the chips drift further */
-  var chips = fig.querySelectorAll('.hud-chip');
-  var tx=0, ty=0, cx=0, cy=0, raf=null;
-  function apply(){
-    cx += (tx-cx)*0.08; cy += (ty-cy)*0.08;
-    img.style.transform    = 'translate3d('+(cx*7)+'px,'+(cy*7)+'px,0)';
-    canvas.style.transform = 'translate3d('+(cx*7)+'px,'+(cy*7)+'px,0)';
-    for (var i=0;i<chips.length;i++){
-      var k = i===0 ? -1 : 1;
-      chips[i].style.transform = 'translate3d('+(cx*22*k)+'px,'+(cy*16*k)+'px,0)';
-    }
-  }
-  if (!REDUCED && window.matchMedia('(hover: hover)').matches){
-    fig.addEventListener('pointermove', function(e){
-      var r = fig.getBoundingClientRect();
-      tx = ((e.clientX-r.left)/r.width  - 0.5)*2;
-      ty = ((e.clientY-r.top )/r.height - 0.5)*2;
-    });
-    fig.addEventListener('pointerleave', function(){ tx=0; ty=0; });
-  }
-
-  size();
-  if ('ResizeObserver' in window) new ResizeObserver(size).observe(fig);
-  else window.addEventListener('resize', size);
-  if (img.complete) size(); else img.addEventListener('load', size);
-
-  if (REDUCED){ frame(900); return; }
-
-  var running = true;
-  if ('IntersectionObserver' in window){
-    new IntersectionObserver(function(en){
-      running = en[0].isIntersecting;
-      if (running && !raf) raf = requestAnimationFrame(loop);
-    }, { threshold: 0 }).observe(fig);
-  }
-  function loop(t){
-    raf = null;
-    if (!running) return;
-    frame(t); apply();
-    raf = requestAnimationFrame(loop);
-  }
-  raf = requestAnimationFrame(loop);
-})();
-
-</script>
-
+<script src="/js/ice.js"></script>
 </body>
 </html>
