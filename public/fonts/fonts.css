@@ -1,0 +1,44 @@
+/* Atlas typefaces, self-hosted.
+   Pulled from Google Fonts (latin subset only) and served from our own
+   origin so the page never blocks on a third-party request and the type
+   never swaps in late. Regenerate with scripts/fetch-fonts.sh. */
+
+@font-face{
+  font-family:'Public Sans';
+  font-style:italic;
+  font-weight:400 600;
+  font-display:swap;
+  src:url('/fonts/publicsans-italic-400_600.woff2') format('woff2');
+}
+
+@font-face{
+  font-family:'Public Sans';
+  font-style:normal;
+  font-weight:300 800;
+  font-display:swap;
+  src:url('/fonts/publicsans-normal-300_800.woff2') format('woff2');
+}
+
+@font-face{
+  font-family:'Space Mono';
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url('/fonts/spacemono-normal-400.woff2') format('woff2');
+}
+
+@font-face{
+  font-family:'Space Mono';
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url('/fonts/spacemono-normal-700.woff2') format('woff2');
+}
+
+@font-face{
+  font-family:'Anton';
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url('/fonts/anton-normal-400.woff2') format('woff2');
+}
