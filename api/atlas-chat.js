@@ -1,4 +1,4 @@
-```javascript
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -10,17 +10,14 @@ const STORAGE_BUCKET = "reports";
 const GEMINI_MODEL = "gemini-2.5-flash";
 
 function sbHeaders(extra) {
-  return Object.assign(
-    {
-      apikey: SERVICE_KEY,
-      Authorization: "Bearer " + SERVICE_KEY,
-      "Content-Type": "application/json"
-    },
-    extra || {}
-  );
+  return Object.assign({
+    apikey: SERVICE_KEY,
+    Authorization: "Bearer " + SERVICE_KEY,
+    "Content-Type": "application/json"
+  }, extra || {});
 }
 
-async function getResponseData(response) {
+async function getData(response) {
   const text = await response.text();
 
   if (!text) {
@@ -31,28 +28,6 @@ async function getResponseData(response) {
     return JSON.parse(text);
   } catch (error) {
     return { raw: text };
-  }
-}
-
-function checkEnvironment() {
-  const missing = [];
-
-  if (!SUPABASE_URL) {
-    missing.push("SUPABASE_URL");
-  }
-
-  if (!SERVICE_KEY) {
-    missing.push("SUPABASE_SERVICE_ROLE_KEY");
-  }
-
-  if (!GEMINI_API_KEY) {
-    missing.push("GEMINI_API_KEY");
-  }
-
-  if (missing.length > 0) {
-    throw new Error(
-      "Missing environment variables: " + missing.join(", ")
-    );
   }
 }
 
@@ -78,72 +53,49 @@ async function askGemini(systemPrompt, userText, pdfBase64) {
     ":generateContent?key=" +
     encodeURIComponent(GEMINI_API_KEY);
 
-  const requestBody = {
-    system_instruction: {
-      parts: [
-        {
-          text: systemPrompt
-        }
-      ]
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
     },
-    contents: [
-      {
-        role: "user",
-        parts: parts
-      }
-    ],
-    generationConfig: {
-      temperature: 0.4,
-      maxOutputTokens: 1000
-    }
-  };
-
-  console.log(
-    "Calling Gemini:",
-    GEMINI_MODEL,
-    pdfBase64 ? "with PDF" : "text only"
-  );
-
-  let response;
-
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
+    body: JSON.stringify({
+      system_instruction: {
+        parts: [
+          {
+            text: systemPrompt
+          }
+        ]
       },
-      body: JSON.stringify(requestBody)
-    });
-  } catch (error) {
-    console.error("Gemini network error:", error);
+      contents: [
+        {
+          role: "user",
+          parts: parts
+        }
+      ],
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 1000
+      }
+    })
+  });
 
-    throw new Error(
-      "Gemini could not be reached. Please try again in a moment."
-    );
-  }
-
-  const data = await getResponseData(response);
+  const data = await getData(response);
 
   if (!response.ok) {
     console.error(
-      "Gemini API error:",
+      "Gemini error:",
       response.status,
       JSON.stringify(data)
     );
 
-    let errorMessage = "Gemini returned HTTP " + response.status;
-
-    if (
+    const message =
       data &&
       data.error &&
       data.error.message
-    ) {
-      errorMessage = data.error.message;
-    }
+        ? data.error.message
+        : "Gemini returned HTTP " + response.status;
 
-    throw new Error(
-      "Gemini error: " + errorMessage
-    );
+    throw new Error("Gemini error: " + message);
   }
 
   let reply = "";
@@ -169,9 +121,7 @@ async function askGemini(systemPrompt, userText, pdfBase64) {
       JSON.stringify(data)
     );
 
-    throw new Error(
-      "Gemini returned an empty response."
-    );
+    throw new Error("Gemini returned an empty response.");
   }
 
   return reply;
@@ -181,43 +131,30 @@ async function downloadReportPdf(row) {
   const ref = String(row.report_url || "").trim();
 
   if (!ref) {
-    console.error(
-      "Report has no report_url:",
-      row.id
-    );
-
     return null;
   }
 
-  const candidates = [];
+  const paths = [];
 
   if (ref.includes("/")) {
-    candidates.push(ref);
+    paths.push(ref);
   } else {
     if (row.id) {
-      candidates.push(
+      paths.push(
         row.id + "/" + ref + "_report.pdf"
       );
     }
 
     if (row.user_id) {
-      candidates.push(
+      paths.push(
         row.user_id + "/" + ref + "_report.pdf"
       );
     }
 
-    candidates.push(ref);
+    paths.push(ref);
   }
 
-  const uniqueCandidates =
-    Array.from(new Set(candidates));
-
-  console.log(
-    "Trying report paths:",
-    uniqueCandidates
-  );
-
-  for (const path of uniqueCandidates) {
+  for (const path of paths) {
     try {
       const encodedPath = path
         .split("/")
@@ -244,43 +181,28 @@ async function downloadReportPdf(row) {
         const buffer =
           await response.arrayBuffer();
 
-        console.log(
-          "Report downloaded:",
-          path,
-          "bytes:",
-          buffer.byteLength
-        );
-
-        if (buffer.byteLength === 0) {
-          console.error(
-            "Report file is empty:",
-            path
+        if (buffer.byteLength > 0) {
+          console.log(
+            "Downloaded report:",
+            path,
+            buffer.byteLength
           );
 
-          continue;
+          return Buffer
+            .from(buffer)
+            .toString("base64");
         }
-
-        return Buffer
-          .from(buffer)
-          .toString("base64");
+      } else {
+        console.error(
+          "Report download failed:",
+          path,
+          response.status
+        );
       }
-
-      const errorText =
-        await response.text();
-
-      console.error(
-        "Report path failed:",
-        path,
-        "status:",
-        response.status,
-        "response:",
-        errorText.slice(0, 500)
-      );
 
     } catch (error) {
       console.error(
-        "Error downloading report:",
-        path,
+        "Report download error:",
         error
       );
     }
@@ -292,38 +214,31 @@ async function downloadReportPdf(row) {
 const EXTRACT_PROMPT = [
   "You are reading a hockey skating-analysis report PDF for Atlas.",
   "",
-  "Extract ALL information that a hockey coach would need to discuss the report with the player.",
+  "Extract all information that a hockey coach would need to discuss the report with the player.",
   "",
-  "Include:",
-  "- Overall score",
-  "- Every metric name and score",
-  "- Strengths and their descriptions",
-  "- Areas to improve",
-  "- Descriptions of every area to improve",
-  "- Every drill listed for each area to improve",
-  "- The 3-week focus plan",
-  "- All raw measurements",
-  "- Angles",
-  "- Stride counts",
-  "- Timing measurements",
-  "- Any other numerical measurements",
-  "- Tracking information",
-  "- Notes",
-  "- Caveats",
-  "- Any warnings about the quality of the video or tracking",
+  "Include the overall score.",
+  "Include every metric name and score.",
+  "Include the strengths and their descriptions.",
+  "Include every area to improve.",
+  "Include the descriptions of every area to improve.",
+  "Include every drill listed for each area to improve.",
+  "Include the 3-week focus plan.",
+  "Include all raw measurements.",
+  "Include angles, stride counts, timing measurements, and other numerical measurements.",
+  "Include tracking information.",
+  "Include notes and caveats.",
+  "Include warnings about video or tracking quality.",
   "",
   "Preserve all numbers accurately.",
-  "",
-  "Write a clean, structured plain-text summary.",
-  "",
   "Do not add coaching advice.",
   "Do not interpret the results.",
   "Do not invent anything.",
   "Do not omit information.",
-  ""
+  "Write a clean structured plain-text summary."
 ].join("\n");
 
 export default async function handler(req, res) {
+
   res.setHeader(
     "Access-Control-Allow-Origin",
     "*"
@@ -350,7 +265,24 @@ export default async function handler(req, res) {
   }
 
   try {
-    checkEnvironment();
+
+    if (!SUPABASE_URL) {
+      throw new Error(
+        "SUPABASE_URL is missing"
+      );
+    }
+
+    if (!SERVICE_KEY) {
+      throw new Error(
+        "SUPABASE_SERVICE_ROLE_KEY is missing"
+      );
+    }
+
+    if (!GEMINI_API_KEY) {
+      throw new Error(
+        "GEMINI_API_KEY is missing"
+      );
+    }
 
     const body = req.body || {};
 
@@ -366,8 +298,7 @@ export default async function handler(req, res) {
 
     if (!accessToken || !message) {
       return res.status(400).json({
-        error:
-          "Missing accessToken or message"
+        error: "Missing accessToken or message"
       });
     }
 
@@ -379,12 +310,10 @@ export default async function handler(req, res) {
     }
 
     console.log(
-      "Starting Atlas chat request."
+      "Atlas chat request started"
     );
 
-    // ---------------------------------------------------
-    // 1. Authenticate user
-    // ---------------------------------------------------
+    // Authenticate user
 
     const userResponse = await fetch(
       SUPABASE_URL + "/auth/v1/user",
@@ -399,9 +328,8 @@ export default async function handler(req, res) {
 
     if (!userResponse.ok) {
       console.error(
-        "Supabase authentication failed:",
-        userResponse.status,
-        await userResponse.text()
+        "Authentication failed:",
+        userResponse.status
       );
 
       return res.status(401).json({
@@ -410,14 +338,9 @@ export default async function handler(req, res) {
     }
 
     const user =
-      await getResponseData(userResponse);
+      await getData(userResponse);
 
     if (!user || !user.id) {
-      console.error(
-        "Invalid Supabase user response:",
-        JSON.stringify(user)
-      );
-
       return res.status(401).json({
         error:
           "Could not identify player"
@@ -431,9 +354,7 @@ export default async function handler(req, res) {
       userId
     );
 
-    // ---------------------------------------------------
-    // 2. Daily message limit
-    // ---------------------------------------------------
+    // Daily limit
 
     const todayStart = new Date();
 
@@ -465,19 +386,11 @@ export default async function handler(req, res) {
 
     if (countResponse.ok) {
       const messages =
-        await getResponseData(
-          countResponse
-        );
+        await getData(countResponse);
 
       if (Array.isArray(messages)) {
         usedCount = messages.length;
       }
-    } else {
-      console.error(
-        "Could not check daily message count:",
-        countResponse.status,
-        await countResponse.text()
-      );
     }
 
     if (
@@ -492,11 +405,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // ---------------------------------------------------
-    // 3. Find latest report
-    // ---------------------------------------------------
+    // Find latest report
 
-    const reportUrl =
+    const reportQuery =
       SUPABASE_URL +
       "/rest/v1/" +
       VIDEOS_TABLE +
@@ -507,7 +418,7 @@ export default async function handler(req, res) {
       "&limit=1";
 
     const reportResponse =
-      await fetch(reportUrl, {
+      await fetch(reportQuery, {
         headers: sbHeaders()
       });
 
@@ -525,9 +436,7 @@ export default async function handler(req, res) {
     }
 
     const rows =
-      await getResponseData(
-        reportResponse
-      );
+      await getData(reportResponse);
 
     const row =
       Array.isArray(rows) &&
@@ -544,14 +453,10 @@ export default async function handler(req, res) {
 
     console.log(
       "Found report:",
-      row.id,
-      "Cached:",
-      !!row.report_data
+      row.id
     );
 
-    // ---------------------------------------------------
-    // 4. Get report text
-    // ---------------------------------------------------
+    // Get cached report
 
     let reportText =
       row.report_data;
@@ -561,19 +466,15 @@ export default async function handler(req, res) {
       typeof reportText !== "string" ||
       !reportText.trim()
     ) {
+
       console.log(
-        "No cached report. Downloading PDF."
+        "Downloading report PDF"
       );
 
       const pdfBase64 =
         await downloadReportPdf(row);
 
       if (!pdfBase64) {
-        console.error(
-          "Could not find report PDF:",
-          row.id
-        );
-
         return res.status(404).json({
           error:
             "I couldn't open your report file. Please email us and we'll help you out."
@@ -581,7 +482,7 @@ export default async function handler(req, res) {
       }
 
       console.log(
-        "Sending PDF to Gemini for extraction."
+        "Sending PDF to Gemini"
       );
 
       reportText =
@@ -597,10 +498,6 @@ export default async function handler(req, res) {
             "I couldn't read your report. Please email us and we'll help you out."
         });
       }
-
-      // -------------------------------------------------
-      // Cache extracted report
-      // -------------------------------------------------
 
       const cacheUrl =
         SUPABASE_URL +
@@ -626,16 +523,14 @@ export default async function handler(req, res) {
           cacheResponse.status,
           await cacheResponse.text()
         );
-      } else {
-        console.log(
-          "Report cached successfully."
-        );
       }
 
     } else {
+
       console.log(
-        "Using cached report."
+        "Using cached report"
       );
+
     }
 
     if (
@@ -648,52 +543,42 @@ export default async function handler(req, res) {
       });
     }
 
-    // ---------------------------------------------------
-    // 5. Ask Atlas AI coach
-    // ---------------------------------------------------
+    // Ask Atlas AI
 
     const coachPrompt = [
       "You are the Atlas AI hockey coach, talking one-on-one with a player about their own skating analysis.",
       "",
-      "Your job is to help the player understand and improve their skating based ONLY on the report provided below.",
+      "Your job is to help the player understand and improve their skating based ONLY on the report below.",
       "",
-      "VOICE:",
-      "- Direct",
-      "- Coach-like",
-      "- Encouraging",
-      "- Plain language",
-      "- Not corporate",
-      "- Not overly technical",
+      "Voice:",
+      "Direct, coach-like, encouraging, and plain language.",
+      "Do not sound corporate.",
+      "Do not be unnecessarily technical.",
       "",
-      "RESPONSE STYLE:",
-      "- Lead with what's working when relevant.",
-      "- Then address what needs improvement.",
-      "- Be specific.",
-      "- Every weakness you identify should include a concrete on-ice drill when the report provides one.",
-      "- Keep normal replies around 2-4 sentences.",
-      "- If the player asks for more detail, provide more detail.",
-      "- Talk directly to the player using 'you'.",
+      "Response style:",
+      "Lead with what is working when relevant.",
+      "Then address what needs improvement.",
+      "Be specific.",
+      "When the report provides a drill for a weakness, include that drill.",
+      "Keep normal replies around 2-4 sentences.",
+      "If the player asks for more detail, provide more detail.",
+      "Talk directly to the player using 'you'.",
       "",
-      "ACCURACY:",
-      "- Only use information contained in the report.",
-      "- Never invent scores.",
-      "- Never invent measurements.",
-      "- Never invent strengths.",
-      "- Never invent weaknesses.",
-      "- Never invent drills.",
-      "- Never claim something happened if the report does not say it.",
-      "- If the report does not contain enough information to answer a question, say so clearly.",
-      "- Do not pretend to have analyzed video beyond what is contained in the report.",
+      "Accuracy:",
+      "Only use information contained in the report.",
+      "Never invent scores.",
+      "Never invent measurements.",
+      "Never invent strengths.",
+      "Never invent weaknesses.",
+      "Never invent drills.",
+      "Never claim something happened if the report does not say it.",
+      "If the report does not contain enough information to answer a question, say so clearly.",
       "",
       "PLAYER REPORT:",
       "----------------",
       reportText,
       "----------------"
     ].join("\n");
-
-    console.log(
-      "Sending player question to Gemini."
-    );
 
     const reply =
       await askGemini(
@@ -702,15 +587,13 @@ export default async function handler(req, res) {
         null
       );
 
-    // ---------------------------------------------------
-    // 6. Save conversation
-    // ---------------------------------------------------
+    // Save chat message
 
     const logResponse =
       await fetch(
         SUPABASE_URL +
-          "/rest/v1/" +
-          CHAT_TABLE,
+        "/rest/v1/" +
+        CHAT_TABLE,
         {
           method: "POST",
           headers: sbHeaders({
@@ -730,51 +613,36 @@ export default async function handler(req, res) {
         logResponse.status,
         await logResponse.text()
       );
-    } else {
-      console.log(
-        "Chat message logged."
-      );
     }
 
-    // ---------------------------------------------------
-    // 7. Return response
-    // ---------------------------------------------------
-
     return res.status(200).json({
-      reply:
-        reply ||
-        "Sorry, I couldn't come up with a response. Try rephrasing?",
+      reply: reply,
       remaining:
         Math.max(
           0,
           DAILY_MESSAGE_LIMIT -
-            usedCount -
-            1
+          usedCount -
+          1
         )
     });
 
   } catch (error) {
+
     console.error(
-      "=========================================="
+      "ATLAS CHAT ERROR:"
     );
 
     console.error(
-      "ATLAS CHAT ERROR"
-    );
-
-    console.error(
-      error && error.stack
+      error &&
+      error.stack
         ? error.stack
         : error
     );
 
-    console.error(
-      "=========================================="
-    );
-
     return res.status(500).json({
       error:
-        error && error.message
+        error &&
+        error.message
           ? error.message
           : "Something went wrong."
     });
