@@ -196,11 +196,38 @@
     var vids = [].slice.call(document.querySelectorAll('.clip > video'));
     if (!vids.length) return;
     if (REDUCED) { vids.forEach(function (v) { v.pause(); }); return; }
-    if (!('IntersectionObserver' in window)) { vids.forEach(function (v) { v.play().catch(function(){}); }); return; }
+
+    // iOS can reject an autoplay attempt made before a clip has buffered
+    // enough to play -- most likely for whichever tab is open on page load,
+    // since that's the one play() gets called on soonest, racing everything
+    // else the page is still loading. Retry once the browser actually
+    // reports it's ready, instead of giving up silently.
+    function attemptPlay(v) {
+      var p = v.play();
+      if (p && p.catch) {
+        p.catch(function () {
+          v.addEventListener('canplay', function retry() {
+            v.removeEventListener('canplay', retry);
+            v.play().catch(function () {});
+          }, { once: true });
+        });
+      }
+    }
+
+    // Nudge every clip to start fetching its metadata right away, not just
+    // whichever one happens to be the visible tab -- a hidden clip's video
+    // element doesn't start loading anything on its own until it's actually
+    // laid out, which is what made switching tabs look like the fix.
+    vids.forEach(function (v) {
+      v.muted = true;
+      if (v.readyState === 0) v.load();
+    });
+
+    if (!('IntersectionObserver' in window)) { vids.forEach(attemptPlay); return; }
 
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
-        if (e.isIntersecting) e.target.play().catch(function () {});
+        if (e.isIntersecting) attemptPlay(e.target);
         else e.target.pause();
       });
     }, { threshold: 0.25 });
