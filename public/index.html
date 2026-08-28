@@ -210,22 +210,18 @@
 @media (max-width: 900px) { .rep-top { grid-template-columns: 1fr; } }
 .rep-top .tiles { grid-template-columns: 1fr; margin-bottom: 0; }
 
-/* .clip owns the geometry outright and the video is taken out of layout
-   (position:absolute) instead of sizing itself via width/height:100%, so
-   its sizing is a pure paint-time concern decoupled from layout.
-   border-radius is doing real work here even though it reads as 0: on
-   desktop Chrome a playing <video> can briefly render through a hardware
-   overlay plane that bypasses normal CSS clipping (overflow:hidden,
-   borders) entirely for its first second or so, before falling back to
-   regular composited/clipped rendering -- which is what actually looked
-   like the clip "overlapping" its own border on load. Any non-zero
-   border-radius forces Chrome off that overlay fast path from frame one. */
+/* Deliberately a plain bordered box, exactly like .tile/.panel, so it
+   paints with the rest of the page. It previously carried isolation +
+   contain + border-radius (left over from chasing an earlier video bug);
+   all three promote .clip to its own compositor layer, and a promoted
+   layer rasterises separately from the main frame -- which is why this
+   one border showed up a beat after every other border in the section.
+   The video is taken out of layout (position:absolute below) so its
+   sizing stays a paint-time concern, decoupled from this box. */
 .clip {
   position: relative; overflow: hidden;
   background: var(--ink-2); border: 1px solid var(--rule);
   aspect-ratio: 16 / 9; min-height: 100%;
-  isolation: isolate; contain: layout paint;
-  border-radius: 0.5px;
 }
 /* Held invisible until ice.js confirms a real decoded frame has landed
    (the 'loadeddata' event) -- the leftover one-time "stretch" on load is
@@ -236,6 +232,12 @@
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; object-position: center; display: block;
   opacity: 0; transition: opacity 200ms ease;
+  /* Keeps the earlier fix for Chrome rendering a playing <video> through a
+     hardware overlay plane that ignores CSS clipping (it looked like the
+     clip spilling past its own border). A non-zero radius opts out of that
+     fast path -- it belongs on the video, which is the element that needs
+     it, rather than on .clip, which only needs to paint like a normal box. */
+  border-radius: 0.5px;
 }
 .clip > video.ready { opacity: 1; }
 .clip-empty {
