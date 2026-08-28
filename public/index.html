@@ -223,7 +223,15 @@
 .clip {
   position: relative; overflow: hidden;
   background: var(--ink-2); border: 1px solid var(--rule);
-  aspect-ratio: 16 / 9; min-height: 100%;
+  /* Height comes from the width and this ratio ALONE. It used to also carry
+     min-height:100%, which stretched the box to match the measurement column
+     beside it -- so that column's text reflowing (when the webfont finished
+     loading) resized this box, and object-fit re-fitted the footage inside
+     it. Measured: the clip's height moved 458.48 -> 353.91 during load, in
+     step with the tile column. Decoupling them means nothing about the text
+     can change the video's box. */
+  aspect-ratio: 16 / 9;
+  align-self: start;
   /* Lifts the clip above the site-wide film grain (body::after, z-index
      9999 in ice.css). That grain is a fixed, permanently transform-animating
      layer covering the whole viewport, so it sat directly on top of the
