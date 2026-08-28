@@ -227,10 +227,17 @@
   isolation: isolate; contain: layout paint;
   border-radius: 0.5px;
 }
+/* Held invisible until ice.js confirms a real decoded frame has landed
+   (the 'loadeddata' event) -- the leftover one-time "stretch" on load is
+   Chrome swapping in that first real frame after an initial placeholder
+   render, which no CSS/layout trick prevents. Not showing the video until
+   it's past that handoff hides it instead of fighting it. */
 .clip > video {
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; object-position: center; display: block;
+  opacity: 0; transition: opacity 200ms ease;
 }
+.clip > video.ready { opacity: 1; }
 .clip-empty {
   position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
   background:
