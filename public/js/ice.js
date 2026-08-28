@@ -188,60 +188,91 @@
     io.observe(chat);
   }
 
-  /* ------------------------------------------------------------- CLIPS */
+  /* ---------------------------------------------------- CLIPS AS PICTURES */
 
-  /* Covers a clip with its veil (.veiled, see index.html) and lifts it only
-     once the footage is genuinely settled, so any one-time re-fit happens
-     out of sight. The video itself is never animated -- the veil is what
-     fades -- so nothing about the footage can be moved by a transition.
+  /* Paints a clip's frames into a <canvas> and reveals it with a wipe. The
+     <video> stays in the DOM purely as a frame source and is made invisible,
+     so nothing displayed on the page is a video element -- which is the whole
+     point: the re-fit we were chasing is something browsers do to video
+     layers, and a canvas is not one.
 
-     'loadeddata' alone is too early a signal: it only means one frame is
-     decodable, and a reposition can still land after it while the pipeline
-     settles. requestVideoFrameCallback fires per frame actually presented to
-     the screen, so a few presented frames puts the reveal strictly after it.
-
-     `gate` is an optional extra condition that must also complete first; on
-     first load that is the section's reveal (see initClips). */
-  function veilUntilSettled(v, gate) {
+     Everything here is additive and reversible: the canvas is only allowed to
+     take over once it has actually painted a frame, and if that never happens
+     the canvas is torn down and the plain <video> is left visible. */
+  function paintClip(v) {
     var clip = v.parentNode;
-    if (!clip) return;
-    var done = false;
-    var settled = false, gated = !gate;
+    if (!clip || !window.requestAnimationFrame) return;
 
-    function unveil() {
-      if (done || !settled || !gated) return;
-      done = true;
-      // One more frame after every condition, so any layer/stacking change
-      // is painted before the veil starts to lift.
-      requestAnimationFrame(function () { clip.classList.remove('veiled'); });
+    var cv = document.createElement('canvas');
+    var ctx = null;
+    try { ctx = cv.getContext('2d', { alpha: false }); } catch (e) { ctx = null; }
+    if (!ctx) return;
+
+    cv.setAttribute('aria-hidden', 'true');
+    clip.insertBefore(cv, v.nextSibling);
+    clip.classList.add('canvas-on');
+
+    var painted = false;
+
+    function fit() {
+      var r = clip.getBoundingClientRect();
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var w = Math.max(1, Math.round(r.width * dpr));
+      var h = Math.max(1, Math.round(r.height * dpr));
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
     }
-    function markSettled() { settled = true; unveil(); }
-    function markGated()   { gated   = true; unveil(); }
-    function force()       { settled = gated = true; unveil(); }
 
-    clip.classList.add('veiled');
-    if (gate) gate(clip, markGated);
+    function paint() {
+      if (!v.videoWidth || !v.videoHeight) return;
+      if (!clip.offsetParent && clip.offsetHeight === 0) return;   // panel hidden
+      fit();
+      // cover-fit, computed here rather than left to object-fit
+      var s = Math.max(cv.width / v.videoWidth, cv.height / v.videoHeight);
+      var dw = v.videoWidth * s, dh = v.videoHeight * s;
+      ctx.drawImage(v, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
+      if (!painted) { painted = true; revealClip(clip); }
+    }
 
     if (typeof v.requestVideoFrameCallback === 'function') {
-      var seen = 0;
-      v.requestVideoFrameCallback(function onFrame() {
-        if (++seen >= 3) { markSettled(); return; }
-        v.requestVideoFrameCallback(onFrame);
+      v.requestVideoFrameCallback(function loop() {
+        paint();
+        v.requestVideoFrameCallback(loop);
       });
-    } else if (v.readyState >= 2) {
-      markSettled();
     } else {
-      v.addEventListener('loadeddata', markSettled, { once: true });
+      (function raf() { paint(); requestAnimationFrame(raf); })();
     }
 
-    // A clip that never presents frames -- paused for reduced motion, or
-    // autoplay refused -- must still be uncovered rather than sit blank, and
-    // so must one whose file fails to load (the inline onerror strips the
-    // <video>, leaving the placeholder that needs to be visible).
-    if (v.readyState >= 2) setTimeout(markSettled, 400);
-    else v.addEventListener('loadeddata', function () { setTimeout(markSettled, 400); }, { once: true });
-    v.addEventListener('error', force);
-    setTimeout(force, 3500);
+    // Nothing painted -- no frames, no decode, file missing. Hand the page
+    // back to the plain <video> rather than leaving an empty box. A clip in
+    // a hidden tab is NOT that case: display:none means it was never asked
+    // to paint, so keep waiting instead of tearing its canvas down before
+    // the viewer has even opened that tab.
+    var strikes = 0;
+    (function watch() {
+      setTimeout(function () {
+        if (painted) return;
+        // Only count time the clip was actually on screen and still blank. A
+        // tab that has just been opened needs a moment to start decoding, and
+        // a tab that is closed is not failing at all.
+        strikes = clip.offsetHeight === 0 ? 0 : strikes + 1;
+        if (strikes < 4) { watch(); return; }
+        clip.classList.remove('canvas-on');
+        if (cv.parentNode) cv.parentNode.removeChild(cv);
+      }, 1000);
+    })();
+
+    window.addEventListener('resize', function () { if (painted) paint(); }, { passive: true });
+  }
+
+  /* Wipes the canvas open. Re-run on tab switch so each clip arrives the
+     same way rather than only the one that happened to load first. */
+  function revealClip(clip) {
+    clip.classList.remove('shown', 'sweeping');
+    void clip.offsetWidth;                       // restart the animation
+    requestAnimationFrame(function () {
+      clip.classList.add('shown');
+      if (!REDUCED) clip.classList.add('sweeping');
+    });
   }
 
   /* Autoplay the tab clips only while they are on screen, and never when the
@@ -250,30 +281,7 @@
     var vids = [].slice.call(document.querySelectorAll('.clip > video'));
     if (!vids.length) return;
 
-    // On first load the veil additionally has to outlast the section's own
-    // reveal. .rv fades from opacity 0, and an element below opacity 1 forms
-    // a stacking context, which traps the clip's z-index inside it -- so the
-    // clip sits under the film grain until that reveal lands on exactly 1,
-    // the stacking context dissolves, and the clip jumps above the grain.
-    // That jump is visible if it happens in the open.
-    function sectionRevealGate(clip, cb) {
-      var rv = clip.closest && clip.closest('.rv');
-      if (!rv || getComputedStyle(rv).opacity === '1') { cb(); return; }
-      var fired = false;
-      function fin() { if (!fired) { fired = true; cb(); } }
-      rv.addEventListener('transitionend', function (e) {
-        if (e.propertyName === 'opacity') fin();
-      });
-      setTimeout(fin, 3000);          // never strand the veil on a missed event
-    }
-
-    vids.forEach(function (v) {
-      // Only veil a clip that isn't showing anything yet. On a warm cache the
-      // footage can already be decoded by the time this runs, and covering it
-      // at that point would produce the very flash the veil exists to avoid.
-      if (v.readyState >= 2) return;
-      veilUntilSettled(v, sectionRevealGate);
-    });
+    vids.forEach(paintClip);
 
     if (REDUCED) { vids.forEach(function (v) { v.pause(); }); return; }
 
@@ -381,17 +389,15 @@
           var on = panels[j].getAttribute('data-panel') === name;
           panels[j].classList.toggle('on', on);
 
-          // A hidden panel is display:none, so its clip has no layout at all
-          // and its video has never been presented. Revealing the panel lays
-          // it out and starts it for the first time, which is exactly when
-          // the one-time re-fit happens -- the same event as on page load,
-          // just triggered by a click instead. Veil it for that too, so the
-          // switch is covered rather than shown.
+          // A hidden panel is display:none, so its clip never painted while
+          // it was away. Start it again and wipe it in, so every tab arrives
+          // the same way instead of only the first one.
           if (on) {
             var tv = panels[j].querySelector('.clip > video');
             if (tv) {
-              veilUntilSettled(tv);
               if (!REDUCED && tv.paused) { var pr = tv.play(); if (pr && pr.catch) pr.catch(function () {}); }
+              var tc = tv.parentNode;
+              if (tc && tc.classList.contains('canvas-on')) revealClip(tc);
             }
           }
 
