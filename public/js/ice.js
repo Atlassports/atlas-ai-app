@@ -196,18 +196,39 @@
     var vids = [].slice.call(document.querySelectorAll('.clip > video'));
     if (!vids.length) return;
 
-    // Kept invisible (see ice.css opacity rule) until a real decoded frame
-    // has landed, so viewers never see the one-time reframe as the browser
-    // swaps its placeholder render for the first real frame. Applies
-    // whether or not motion is reduced -- a paused clip still needs to
-    // reveal its static first frame instead of staying blank forever.
-    vids.forEach(function (v) {
-      if (v.readyState >= 2) {
-        v.classList.add('ready');
+    // Kept invisible (see the opacity rule in index.html) until the clip is
+    // genuinely settled, then faded in.
+    //
+    // 'loadeddata' alone turned out to be too early: it only means one frame
+    // is decodable, and a small one-time reposition can still land after it
+    // while the video pipeline settles -- visible as the footage nudging to
+    // fit its frame. requestVideoFrameCallback fires once per frame actually
+    // presented to the screen, so waiting a few presented frames reveals the
+    // clip strictly after anything like that has happened. The reposition
+    // itself was never reproducible here (this box has no GPU compositor),
+    // so this hides it rather than claiming to cure it.
+    function revealWhenSettled(v) {
+      var shown = false;
+      function show() { if (!shown) { shown = true; v.classList.add('ready'); } }
+
+      if (typeof v.requestVideoFrameCallback === 'function') {
+        var seen = 0;
+        v.requestVideoFrameCallback(function onFrame() {
+          if (++seen >= 3) { show(); return; }
+          v.requestVideoFrameCallback(onFrame);
+        });
+      } else if (v.readyState >= 2) {
+        show();
       } else {
-        v.addEventListener('loadeddata', function () { v.classList.add('ready'); }, { once: true });
+        v.addEventListener('loadeddata', show, { once: true });
       }
-    });
+
+      // A clip that never presents frames -- paused for reduced motion, or
+      // autoplay refused -- must still become visible rather than sit blank.
+      v.addEventListener('loadeddata', function () { setTimeout(show, 400); }, { once: true });
+      setTimeout(show, 2500);
+    }
+    vids.forEach(revealWhenSettled);
 
     if (REDUCED) { vids.forEach(function (v) { v.pause(); }); return; }
 
