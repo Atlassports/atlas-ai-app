@@ -204,10 +204,38 @@
     // reposition can still land after it while the pipeline settles.
     // requestVideoFrameCallback fires per frame actually presented to the
     // screen, so a few presented frames puts the reveal strictly after that.
+    // The clip additionally has to wait for the section's own reveal to
+    // finish before it is uncovered. .rv fades from opacity 0, and an
+    // element below opacity 1 forms a stacking context, which traps the
+    // clip's z-index inside it -- so the clip sits under the film grain
+    // until that reveal lands on exactly 1, the stacking context dissolves,
+    // and the clip jumps above the grain. That jump is visible if it
+    // happens in the open, so keep the veil over it until it has passed.
+    function whenSectionRevealed(clip, cb) {
+      var rv = clip.closest && clip.closest('.rv');
+      if (!rv || getComputedStyle(rv).opacity === '1') { cb(); return; }
+      var fired = false;
+      function fin() { if (!fired) { fired = true; cb(); } }
+      rv.addEventListener('transitionend', function (e) {
+        if (e.propertyName === 'opacity') fin();
+      });
+      setTimeout(fin, 3000);          // never strand the veil on a missed event
+    }
+
     function revealWhenSettled(v) {
       var clip = v.parentNode;
       var done = false;
-      function unveil() { if (!done) { done = true; clip.classList.remove('veiled'); } }
+      var settled = false, revealed = false;
+      function unveil() {
+        if (done || !settled || !revealed) return;
+        done = true;
+        // One more frame after both conditions, so the stacking-context
+        // change is definitely painted before the veil starts to lift.
+        requestAnimationFrame(function () { clip.classList.remove('veiled'); });
+      }
+      function markSettled()  { settled  = true; unveil(); }
+      function markRevealed() { revealed = true; unveil(); }
+      function force() { settled = revealed = true; unveil(); }
 
       // Only veil a clip that isn't showing anything yet. On a warm cache the
       // footage can already be decoded by the time this runs, and covering it
@@ -215,25 +243,27 @@
       if (v.readyState >= 2) { done = true; return; }
       clip.classList.add('veiled');
 
+      whenSectionRevealed(clip, markRevealed);
+
       if (typeof v.requestVideoFrameCallback === 'function') {
         var seen = 0;
         v.requestVideoFrameCallback(function onFrame() {
-          if (++seen >= 3) { unveil(); return; }
+          if (++seen >= 3) { markSettled(); return; }
           v.requestVideoFrameCallback(onFrame);
         });
       } else if (v.readyState >= 2) {
-        unveil();
+        markSettled();
       } else {
-        v.addEventListener('loadeddata', unveil, { once: true });
+        v.addEventListener('loadeddata', markSettled, { once: true });
       }
 
       // A clip that never presents frames -- paused for reduced motion, or
       // autoplay refused -- must still be uncovered rather than sit blank,
       // and so must one whose file fails to load (the inline onerror strips
       // the <video>, leaving the placeholder that needs to be visible).
-      v.addEventListener('loadeddata', function () { setTimeout(unveil, 400); }, { once: true });
-      v.addEventListener('error', unveil);
-      setTimeout(unveil, 2500);
+      v.addEventListener('loadeddata', function () { setTimeout(markSettled, 400); }, { once: true });
+      v.addEventListener('error', force);
+      setTimeout(force, 3500);
     }
     vids.forEach(revealWhenSettled);
 
