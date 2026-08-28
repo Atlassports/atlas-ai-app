@@ -210,20 +210,23 @@
 @media (max-width: 900px) { .rep-top { grid-template-columns: 1fr; } }
 .rep-top .tiles { grid-template-columns: 1fr; margin-bottom: 0; }
 
+/* .clip owns the geometry outright and the video is taken out of layout
+   (position:absolute) instead of sizing itself via width/height:100% --
+   that stopped a one-time diagonal ~1-2px snap Chrome (desktop only) showed
+   right as each clip started: the video was participating in the box's own
+   layout, so once Chrome had a real decoded frame to composite it recomputed
+   that layout and everything nudged into place. Absolute + contain keeps
+   the video sizing purely a paint-time concern, decoupled from layout. */
 .clip {
   position: relative; overflow: hidden;
   background: var(--ink-2); border: 1px solid var(--rule);
   aspect-ratio: 16 / 9; min-height: 100%;
+  isolation: isolate; contain: layout paint;
 }
-/* Isolates the clip on its own compositor layer -- without this, Chrome on
-   desktop can visibly shake/reframe a playing <video> when other elements on
-   the page (here, the scroll-linked ice-sheet background) are also on GPU
-   layers with an active transform. Safari doesn't share this bug, which is
-   why it only showed up on PC. will-change (rather than a forced
-   translateZ(0)) hints the browser to allocate that layer ahead of first
-   paint instead of correcting into it a frame late, which is what caused
-   the brief one-time settle right after load. */
-.clip > video { width: 100%; height: 100%; object-fit: cover; display: block; will-change: transform; }
+.clip > video {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: center; display: block;
+}
 .clip-empty {
   position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
   background:
