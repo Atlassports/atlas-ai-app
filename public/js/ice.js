@@ -191,10 +191,11 @@
   /* ---------------------------------------------------- CLIPS AS PICTURES */
 
   /* Paints a clip's frames into a <canvas> and reveals it with a wipe. The
-     <video> stays in the DOM purely as a frame source and is made invisible,
-     so nothing displayed on the page is a video element -- which is the whole
-     point: the re-fit we were chasing is something browsers do to video
-     layers, and a canvas is not one.
+     <video> stays in the DOM purely as a frame source, covered by an opaque
+     backdrop rather than made transparent (see .clip.canvas-on::after -- iOS
+     will not autoplay a clip it considers invisible), so nothing the viewer
+     sees is a video element -- which is the whole point: the re-fit we were
+     chasing is something browsers do to video layers, and a canvas is not one.
 
      Everything here is additive and reversible: the canvas is only allowed to
      take over once it has actually painted a frame, and if that never happens
@@ -232,6 +233,21 @@
       ctx.drawImage(v, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
       if (!painted) { painted = true; revealClip(clip); }
     }
+
+    // Paint whenever a frame becomes available, not only while playing. If
+    // autoplay is refused -- iOS routinely refuses until the page has had a
+    // real tap -- requestVideoFrameCallback never fires, and without this the
+    // canvas would sit empty. A blocked clip should look like a still frame
+    // of the footage, which is what the plain <video> used to show.
+    ['loadeddata', 'canplay', 'seeked', 'play', 'playing'].forEach(function (ev) {
+      v.addEventListener(ev, paint);
+    });
+    if (v.readyState >= 2) paint();
+
+    // Exposed so a tab switch can force a repaint: a clip that was in a
+    // hidden panel painted nothing while it was away, and if its playback is
+    // blocked no event will fire to prompt one when it appears.
+    v.__paintFrame = paint;
 
     if (typeof v.requestVideoFrameCallback === 'function') {
       v.requestVideoFrameCallback(function loop() {
@@ -397,6 +413,7 @@
             if (tv) {
               if (!REDUCED && tv.paused) { var pr = tv.play(); if (pr && pr.catch) pr.catch(function () {}); }
               var tc = tv.parentNode;
+              if (typeof tv.__paintFrame === 'function') tv.__paintFrame();
               if (tc && tc.classList.contains('canvas-on')) revealClip(tc);
             }
           }
