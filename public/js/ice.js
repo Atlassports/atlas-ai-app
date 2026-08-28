@@ -214,30 +214,6 @@
       }
     }
 
-    // A visible, guaranteed fallback: if a clip still hasn't actually
-    // started shortly after coming into view, show a small tap-to-play mark
-    // on it. A direct tap on the video itself is always a qualifying
-    // gesture -- this cannot fail the way a silent autoplay attempt can.
-    function addPlayButton(v) {
-      var btn = document.createElement('button');
-      btn.className = 'clip-playbtn';
-      btn.type = 'button';
-      btn.setAttribute('aria-label', 'Play clip');
-      btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
-      btn.addEventListener('click', function (ev) {
-        ev.stopPropagation();
-        v.play().catch(function () {});
-      });
-      v.insertAdjacentElement('afterend', btn);
-      v.addEventListener('playing', function () { btn.classList.remove('show'); });
-      // If the clip genuinely fails to load (separate from the inline
-      // onerror on the tag itself), don't leave the tap icon floating over
-      // an empty slot with nothing left for it to control.
-      v.addEventListener('error', function () { btn.remove(); });
-      return btn;
-    }
-    var buttons = vids.map(addPlayButton);
-
     // Nudge every clip to start fetching its metadata right away, not just
     // whichever one happens to be the visible tab -- a hidden clip's video
     // element doesn't start loading anything on its own until it's actually
@@ -251,12 +227,8 @@
 
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
-        if (!e.isIntersecting) { e.target.pause(); return; }
-        attemptPlay(e.target);
-        var idx = vids.indexOf(e.target);
-        setTimeout(function () {
-          if (e.target.paused) buttons[idx].classList.add('show');
-        }, 700);
+        if (e.isIntersecting) attemptPlay(e.target);
+        else e.target.pause();
       });
     }, { threshold: 0.25 });
     vids.forEach(function (v) { io.observe(v); });
