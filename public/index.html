@@ -268,6 +268,28 @@
   background: var(--ink-2); pointer-events: none;
 }
 
+/* Tap-to-play, shown only when the browser has actually refused to start a
+   clip. iOS blocks muted autoplay until the page has had a real gesture, and
+   because the <video> is covered by the canvas its own native play icon is
+   hidden -- so this is the only control on screen, never a second one
+   stacked on the system's. Added by ice.js, so it can never appear on a page
+   where the script did not run and the tap would do nothing. */
+.clip-play {
+  position: absolute; inset: 0; margin: auto;
+  width: 58px; height: 58px; border-radius: 50%;
+  z-index: 5; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(8,8,10,0.72); border: 1px solid var(--rule-2);
+  color: var(--bone); cursor: pointer;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  transition: background var(--t-fast) ease, border-color var(--t-fast) ease,
+              transform var(--t-fast) var(--e-std);
+}
+.clip.needs-play .clip-play { display: flex; }
+.clip-play:hover { background: var(--red); border-color: var(--red); }
+.clip-play:active { transform: scale(0.94); }
+.clip-play svg { margin-left: 3px; }
+
 .clip::before {
   content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 3px;
   background: var(--red); z-index: 4; opacity: 0; pointer-events: none;
