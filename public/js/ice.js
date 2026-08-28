@@ -306,16 +306,56 @@
     // since that's the one play() gets called on soonest, racing everything
     // else the page is still loading. Retry once the browser actually
     // reports it's ready, instead of giving up silently.
+    // One tap anywhere starts every clip, not just the one tapped: iOS gates
+    // the whole page on a single gesture, so the others would otherwise stay
+    // stopped until each was tapped in turn.
+    function playAll() {
+      vids.forEach(function (o) {
+        var q = o.play();
+        if (q && q.catch) q.catch(function () {});
+      });
+    }
+
+    function addPlayButton(v) {
+      var clip = v.parentNode;
+      if (!clip) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'clip-play';
+      btn.setAttribute('aria-label', 'Play clip');
+      btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"' +
+                      ' aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        playAll();
+      });
+      clip.appendChild(btn);
+
+      // The button is only ever offered while a clip is genuinely stuck: it
+      // goes the moment playback starts, and never appears for a clip that
+      // was deliberately paused for being scrolled off screen.
+      v.addEventListener('playing', function () { clip.classList.remove('needs-play'); });
+      v.addEventListener('error',   function () { clip.classList.remove('needs-play'); });
+    }
+
+    function offerPlay(v) {
+      if (v.parentNode) v.parentNode.classList.add('needs-play');
+    }
+
     function attemptPlay(v) {
       var p = v.play();
       if (p && p.catch) {
         p.catch(function () {
+          offerPlay(v);                       // refused: give the viewer a tap
           v.addEventListener('canplay', function retry() {
             v.removeEventListener('canplay', retry);
-            v.play().catch(function () {});
+            v.play().catch(function () { offerPlay(v); });
           }, { once: true });
         });
       }
+      // play() can resolve while playback never actually begins; check back.
+      setTimeout(function () { if (v.paused) offerPlay(v); }, 1200);
     }
 
     // Nudge every clip to start fetching its metadata right away, not just
@@ -324,6 +364,7 @@
     // laid out, which is what made switching tabs look like the fix.
     vids.forEach(function (v) {
       v.muted = true;
+      addPlayButton(v);
       if (v.readyState === 0) v.load();
     });
 
@@ -331,8 +372,12 @@
 
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
-        if (e.isIntersecting) attemptPlay(e.target);
-        else e.target.pause();
+        if (e.isIntersecting) {
+          attemptPlay(e.target);
+        } else {
+          e.target.pause();
+          if (e.target.parentNode) e.target.parentNode.classList.remove('needs-play');
+        }
       });
     }, { threshold: 0.25 });
     vids.forEach(function (v) { io.observe(v); });
