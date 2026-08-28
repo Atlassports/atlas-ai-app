@@ -288,7 +288,10 @@
 .clip.needs-play .clip-play { display: flex; }
 .clip-play:hover { background: var(--red); border-color: var(--red); }
 .clip-play:active { transform: scale(0.94); }
-.clip-play svg { margin-left: 3px; }
+/* No nudge here: the triangle is drawn so its centroid already sits on the
+   middle of the viewBox, which is what makes a play mark look centred. The
+   old margin-left pushed an already-offset path further right. */
+.clip-play svg { display: block; }
 
 .clip::before {
   content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 3px;
