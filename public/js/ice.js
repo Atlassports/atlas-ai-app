@@ -196,37 +196,44 @@
     var vids = [].slice.call(document.querySelectorAll('.clip > video'));
     if (!vids.length) return;
 
-    // Kept invisible (see the opacity rule in index.html) until the clip is
-    // genuinely settled, then faded in.
+    // The clip is covered by a veil (.veiled, see index.html) and the veil is
+    // what fades -- the video is never animated, so nothing can re-fit it.
     //
-    // 'loadeddata' alone turned out to be too early: it only means one frame
-    // is decodable, and a small one-time reposition can still land after it
-    // while the video pipeline settles -- visible as the footage nudging to
-    // fit its frame. requestVideoFrameCallback fires once per frame actually
-    // presented to the screen, so waiting a few presented frames reveals the
-    // clip strictly after anything like that has happened. The reposition
-    // itself was never reproducible here (this box has no GPU compositor),
-    // so this hides it rather than claiming to cure it.
+    // Lift the veil once the footage is genuinely settled. 'loadeddata' alone
+    // is too early: it only means one frame is decodable, and a one-time
+    // reposition can still land after it while the pipeline settles.
+    // requestVideoFrameCallback fires per frame actually presented to the
+    // screen, so a few presented frames puts the reveal strictly after that.
     function revealWhenSettled(v) {
-      var shown = false;
-      function show() { if (!shown) { shown = true; v.classList.add('ready'); } }
+      var clip = v.parentNode;
+      var done = false;
+      function unveil() { if (!done) { done = true; clip.classList.remove('veiled'); } }
+
+      // Only veil a clip that isn't showing anything yet. On a warm cache the
+      // footage can already be decoded by the time this runs, and covering it
+      // at that point would produce the very flash the veil exists to avoid.
+      if (v.readyState >= 2) { done = true; return; }
+      clip.classList.add('veiled');
 
       if (typeof v.requestVideoFrameCallback === 'function') {
         var seen = 0;
         v.requestVideoFrameCallback(function onFrame() {
-          if (++seen >= 3) { show(); return; }
+          if (++seen >= 3) { unveil(); return; }
           v.requestVideoFrameCallback(onFrame);
         });
       } else if (v.readyState >= 2) {
-        show();
+        unveil();
       } else {
-        v.addEventListener('loadeddata', show, { once: true });
+        v.addEventListener('loadeddata', unveil, { once: true });
       }
 
       // A clip that never presents frames -- paused for reduced motion, or
-      // autoplay refused -- must still become visible rather than sit blank.
-      v.addEventListener('loadeddata', function () { setTimeout(show, 400); }, { once: true });
-      setTimeout(show, 2500);
+      // autoplay refused -- must still be uncovered rather than sit blank,
+      // and so must one whose file fails to load (the inline onerror strips
+      // the <video>, leaving the placeholder that needs to be visible).
+      v.addEventListener('loadeddata', function () { setTimeout(unveil, 400); }, { once: true });
+      v.addEventListener('error', unveil);
+      setTimeout(unveil, 2500);
     }
     vids.forEach(revealWhenSettled);
 
