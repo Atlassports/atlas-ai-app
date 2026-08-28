@@ -17,7 +17,9 @@
 /* ------------------------------------------------------------------- NAV */
 
 #nav {
-  position: sticky; top: 0; z-index: 90;
+  /* Above .clip (10000), which is itself lifted over the grain layer, so the
+     sticky bar still passes over the report clips as they scroll under it. */
+  position: sticky; top: 0; z-index: 10001;
   background: rgba(8,8,10,0.6);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
@@ -222,6 +224,15 @@
   position: relative; overflow: hidden;
   background: var(--ink-2); border: 1px solid var(--rule);
   aspect-ratio: 16 / 9; min-height: 100%;
+  /* Lifts the clip above the site-wide film grain (body::after, z-index
+     9999 in ice.css). That grain is a fixed, permanently transform-animating
+     layer covering the whole viewport, so it sat directly on top of the
+     footage -- and a composited animating layer above a <video> forces the
+     browser to composite the video differently, which is the kind of thing
+     that re-fits it once as playback starts. Only the clips are lifted out
+     from under it; the grain still covers the rest of the site untouched.
+     #nav is raised past this so it still passes over the clip on scroll. */
+  z-index: 10000;
 }
 /* Held invisible until ice.js confirms a real decoded frame has landed
    (the 'loadeddata' event) -- the leftover one-time "stretch" on load is
