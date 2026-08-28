@@ -219,8 +219,11 @@
    desktop can visibly shake/reframe a playing <video> when other elements on
    the page (here, the scroll-linked ice-sheet background) are also on GPU
    layers with an active transform. Safari doesn't share this bug, which is
-   why it only showed up on PC. */
-.clip > video { width: 100%; height: 100%; object-fit: cover; display: block; transform: translateZ(0); backface-visibility: hidden; }
+   why it only showed up on PC. will-change (rather than a forced
+   translateZ(0)) hints the browser to allocate that layer ahead of first
+   paint instead of correcting into it a frame late, which is what caused
+   the brief one-time settle right after load. */
+.clip > video { width: 100%; height: 100%; object-fit: cover; display: block; will-change: transform; }
 .clip-empty {
   position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
   background:
