@@ -231,7 +231,6 @@
 .clip > video {
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; object-position: center; display: block;
-  opacity: 0; transition: opacity 200ms ease;
   /* Keeps the earlier fix for Chrome rendering a playing <video> through a
      hardware overlay plane that ignores CSS clipping (it looked like the
      clip spilling past its own border). A non-zero radius opts out of that
@@ -239,7 +238,29 @@
      it, rather than on .clip, which only needs to paint like a normal box. */
   border-radius: 0.5px;
 }
-.clip > video.ready { opacity: 1; }
+/* The video itself is never animated -- no opacity, no transform, ever.
+   Fading the video in was what put it on its own compositor layer for the
+   length of the transition and then took that layer away again at the end,
+   and a layer coming and going can re-raster the footage at a slightly
+   different subpixel offset ("shifts up, then back down, then settles").
+
+   The transition instead happens on a veil painted OVER the clip: a plain
+   pseudo-element that starts opaque and fades to nothing. The footage sits
+   there untouched the whole time, so there is nothing about it for the
+   browser to re-fit; only the veil animates, and a flat-coloured box has
+   no content that can shift.
+
+   It is applied by JS (.veiled) rather than being the default, so if the
+   script never runs the clip is simply visible instead of hidden. */
+.clip::after {
+  content: ""; position: absolute; inset: 0; z-index: 2;
+  background: var(--ink-2); pointer-events: none;
+  opacity: 0; transition: opacity 260ms var(--e-out);
+}
+.clip.veiled::after { opacity: 1; transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .clip::after { transition: none; }
+}
 .clip-empty {
   position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
   background:
