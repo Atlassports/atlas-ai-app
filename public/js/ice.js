@@ -195,6 +195,20 @@
   function initClips() {
     var vids = [].slice.call(document.querySelectorAll('.clip > video'));
     if (!vids.length) return;
+
+    // Kept invisible (see ice.css opacity rule) until a real decoded frame
+    // has landed, so viewers never see the one-time reframe as the browser
+    // swaps its placeholder render for the first real frame. Applies
+    // whether or not motion is reduced -- a paused clip still needs to
+    // reveal its static first frame instead of staying blank forever.
+    vids.forEach(function (v) {
+      if (v.readyState >= 2) {
+        v.classList.add('ready');
+      } else {
+        v.addEventListener('loadeddata', function () { v.classList.add('ready'); }, { once: true });
+      }
+    });
+
     if (REDUCED) { vids.forEach(function (v) { v.pause(); }); return; }
 
     // iOS can reject an autoplay attempt made before a clip has buffered
