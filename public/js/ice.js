@@ -190,28 +190,73 @@
 
   /* ------------------------------------------------------------- CLIPS */
 
+  /* Covers a clip with its veil (.veiled, see index.html) and lifts it only
+     once the footage is genuinely settled, so any one-time re-fit happens
+     out of sight. The video itself is never animated -- the veil is what
+     fades -- so nothing about the footage can be moved by a transition.
+
+     'loadeddata' alone is too early a signal: it only means one frame is
+     decodable, and a reposition can still land after it while the pipeline
+     settles. requestVideoFrameCallback fires per frame actually presented to
+     the screen, so a few presented frames puts the reveal strictly after it.
+
+     `gate` is an optional extra condition that must also complete first; on
+     first load that is the section's reveal (see initClips). */
+  function veilUntilSettled(v, gate) {
+    var clip = v.parentNode;
+    if (!clip) return;
+    var done = false;
+    var settled = false, gated = !gate;
+
+    function unveil() {
+      if (done || !settled || !gated) return;
+      done = true;
+      // One more frame after every condition, so any layer/stacking change
+      // is painted before the veil starts to lift.
+      requestAnimationFrame(function () { clip.classList.remove('veiled'); });
+    }
+    function markSettled() { settled = true; unveil(); }
+    function markGated()   { gated   = true; unveil(); }
+    function force()       { settled = gated = true; unveil(); }
+
+    clip.classList.add('veiled');
+    if (gate) gate(clip, markGated);
+
+    if (typeof v.requestVideoFrameCallback === 'function') {
+      var seen = 0;
+      v.requestVideoFrameCallback(function onFrame() {
+        if (++seen >= 3) { markSettled(); return; }
+        v.requestVideoFrameCallback(onFrame);
+      });
+    } else if (v.readyState >= 2) {
+      markSettled();
+    } else {
+      v.addEventListener('loadeddata', markSettled, { once: true });
+    }
+
+    // A clip that never presents frames -- paused for reduced motion, or
+    // autoplay refused -- must still be uncovered rather than sit blank, and
+    // so must one whose file fails to load (the inline onerror strips the
+    // <video>, leaving the placeholder that needs to be visible).
+    if (v.readyState >= 2) setTimeout(markSettled, 400);
+    else v.addEventListener('loadeddata', function () { setTimeout(markSettled, 400); }, { once: true });
+    v.addEventListener('error', force);
+    setTimeout(force, 3500);
+  }
+
   /* Autoplay the tab clips only while they are on screen, and never when the
      viewer has asked for reduced motion. */
   function initClips() {
     var vids = [].slice.call(document.querySelectorAll('.clip > video'));
     if (!vids.length) return;
 
-    // The clip is covered by a veil (.veiled, see index.html) and the veil is
-    // what fades -- the video is never animated, so nothing can re-fit it.
-    //
-    // Lift the veil once the footage is genuinely settled. 'loadeddata' alone
-    // is too early: it only means one frame is decodable, and a one-time
-    // reposition can still land after it while the pipeline settles.
-    // requestVideoFrameCallback fires per frame actually presented to the
-    // screen, so a few presented frames puts the reveal strictly after that.
-    // The clip additionally has to wait for the section's own reveal to
-    // finish before it is uncovered. .rv fades from opacity 0, and an
-    // element below opacity 1 forms a stacking context, which traps the
-    // clip's z-index inside it -- so the clip sits under the film grain
-    // until that reveal lands on exactly 1, the stacking context dissolves,
-    // and the clip jumps above the grain. That jump is visible if it
-    // happens in the open, so keep the veil over it until it has passed.
-    function whenSectionRevealed(clip, cb) {
+    // On first load the veil additionally has to outlast the section's own
+    // reveal. .rv fades from opacity 0, and an element below opacity 1 forms
+    // a stacking context, which traps the clip's z-index inside it -- so the
+    // clip sits under the film grain until that reveal lands on exactly 1,
+    // the stacking context dissolves, and the clip jumps above the grain.
+    // That jump is visible if it happens in the open.
+    function sectionRevealGate(clip, cb) {
       var rv = clip.closest && clip.closest('.rv');
       if (!rv || getComputedStyle(rv).opacity === '1') { cb(); return; }
       var fired = false;
@@ -222,50 +267,13 @@
       setTimeout(fin, 3000);          // never strand the veil on a missed event
     }
 
-    function revealWhenSettled(v) {
-      var clip = v.parentNode;
-      var done = false;
-      var settled = false, revealed = false;
-      function unveil() {
-        if (done || !settled || !revealed) return;
-        done = true;
-        // One more frame after both conditions, so the stacking-context
-        // change is definitely painted before the veil starts to lift.
-        requestAnimationFrame(function () { clip.classList.remove('veiled'); });
-      }
-      function markSettled()  { settled  = true; unveil(); }
-      function markRevealed() { revealed = true; unveil(); }
-      function force() { settled = revealed = true; unveil(); }
-
+    vids.forEach(function (v) {
       // Only veil a clip that isn't showing anything yet. On a warm cache the
       // footage can already be decoded by the time this runs, and covering it
       // at that point would produce the very flash the veil exists to avoid.
-      if (v.readyState >= 2) { done = true; return; }
-      clip.classList.add('veiled');
-
-      whenSectionRevealed(clip, markRevealed);
-
-      if (typeof v.requestVideoFrameCallback === 'function') {
-        var seen = 0;
-        v.requestVideoFrameCallback(function onFrame() {
-          if (++seen >= 3) { markSettled(); return; }
-          v.requestVideoFrameCallback(onFrame);
-        });
-      } else if (v.readyState >= 2) {
-        markSettled();
-      } else {
-        v.addEventListener('loadeddata', markSettled, { once: true });
-      }
-
-      // A clip that never presents frames -- paused for reduced motion, or
-      // autoplay refused -- must still be uncovered rather than sit blank,
-      // and so must one whose file fails to load (the inline onerror strips
-      // the <video>, leaving the placeholder that needs to be visible).
-      v.addEventListener('loadeddata', function () { setTimeout(markSettled, 400); }, { once: true });
-      v.addEventListener('error', force);
-      setTimeout(force, 3500);
-    }
-    vids.forEach(revealWhenSettled);
+      if (v.readyState >= 2) return;
+      veilUntilSettled(v, sectionRevealGate);
+    });
 
     if (REDUCED) { vids.forEach(function (v) { v.pause(); }); return; }
 
@@ -372,6 +380,21 @@
         for (var j = 0; j < panels.length; j++) {
           var on = panels[j].getAttribute('data-panel') === name;
           panels[j].classList.toggle('on', on);
+
+          // A hidden panel is display:none, so its clip has no layout at all
+          // and its video has never been presented. Revealing the panel lays
+          // it out and starts it for the first time, which is exactly when
+          // the one-time re-fit happens -- the same event as on page load,
+          // just triggered by a click instead. Veil it for that too, so the
+          // switch is covered rather than shown.
+          if (on) {
+            var tv = panels[j].querySelector('.clip > video');
+            if (tv) {
+              veilUntilSettled(tv);
+              if (!REDUCED && tv.paused) { var pr = tv.play(); if (pr && pr.catch) pr.catch(function () {}); }
+            }
+          }
+
           if (on && !REDUCED) {
             // replay the bar fills so switching tabs feels like a fresh read
             each('.bar', function (b) {
