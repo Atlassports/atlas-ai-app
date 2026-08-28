@@ -248,18 +248,29 @@
    --t-cine/--e-out timing, with a red edge riding the front of it. */
 .clip > canvas {
   position: absolute; inset: 0; width: 100%; height: 100%;
-  display: block; z-index: 1;
+  display: block; z-index: 2;
   clip-path: inset(0 100% 0 0);
   transition: clip-path var(--t-cine) var(--e-out);
 }
 .clip.shown > canvas { clip-path: inset(0 0 0 0); }
-/* Only hidden once ice.js has a canvas actually painting; if the canvas
-   path is unavailable the video stays visible and behaves as before. */
-.clip.canvas-on > video { opacity: 0; }
+
+/* The <video> is hidden by being COVERED, not by being made transparent.
+   iOS only autoplays a muted clip it considers visible, and opacity:0 can
+   read as not-visible -- which is what stopped the first clip starting until
+   a tab was tapped. Occluding it with an opaque backdrop leaves it visible
+   as far as that policy is concerned while the viewer still only ever sees
+   the canvas. The backdrop is also what the wipe opens against: the canvas
+   is clipped, and underneath it is this, not the footage. Only applied once
+   ice.js has a canvas actually painting -- otherwise the video is on its own
+   and stays visible, exactly as before. */
+.clip.canvas-on::after {
+  content: ""; position: absolute; inset: 0; z-index: 1;
+  background: var(--ink-2); pointer-events: none;
+}
 
 .clip::before {
   content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 3px;
-  background: var(--red); z-index: 3; opacity: 0; pointer-events: none;
+  background: var(--red); z-index: 4; opacity: 0; pointer-events: none;
 }
 .clip.sweeping::before { animation: clip-sweep var(--t-cine) var(--e-out) forwards; }
 @keyframes clip-sweep {
