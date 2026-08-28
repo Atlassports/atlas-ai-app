@@ -216,6 +216,17 @@
   aspect-ratio: 16 / 9; min-height: 100%;
 }
 .clip > video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.clip-playbtn {
+  position: absolute; inset: 0; margin: auto; width: 54px; height: 54px;
+  border-radius: 50%; z-index: 5;
+  background: rgba(8,8,10,0.72); border: 1px solid var(--rule-2); color: var(--bone);
+  display: none; align-items: center; justify-content: center; cursor: pointer;
+  transition: background var(--t-fast) ease, transform var(--t-fast) ease;
+}
+.clip-playbtn.show { display: flex; }
+.clip-playbtn:hover { background: var(--red); border-color: var(--red); }
+.clip-playbtn:active { transform: scale(0.94); }
+.clip-playbtn svg { margin-left: 3px; }
 .clip-empty {
   position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
   background:
