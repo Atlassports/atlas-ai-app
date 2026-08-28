@@ -214,6 +214,30 @@
       }
     }
 
+    // A visible, guaranteed fallback: if a clip still hasn't actually
+    // started shortly after coming into view, show a small tap-to-play mark
+    // on it. A direct tap on the video itself is always a qualifying
+    // gesture -- this cannot fail the way a silent autoplay attempt can.
+    function addPlayButton(v) {
+      var btn = document.createElement('button');
+      btn.className = 'clip-playbtn';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', 'Play clip');
+      btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+      btn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        v.play().catch(function () {});
+      });
+      v.insertAdjacentElement('afterend', btn);
+      v.addEventListener('playing', function () { btn.classList.remove('show'); });
+      // If the clip genuinely fails to load (separate from the inline
+      // onerror on the tag itself), don't leave the tap icon floating over
+      // an empty slot with nothing left for it to control.
+      v.addEventListener('error', function () { btn.remove(); });
+      return btn;
+    }
+    var buttons = vids.map(addPlayButton);
+
     // Nudge every clip to start fetching its metadata right away, not just
     // whichever one happens to be the visible tab -- a hidden clip's video
     // element doesn't start loading anything on its own until it's actually
@@ -227,29 +251,41 @@
 
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
-        if (e.isIntersecting) attemptPlay(e.target);
-        else e.target.pause();
+        if (!e.isIntersecting) { e.target.pause(); return; }
+        attemptPlay(e.target);
+        var idx = vids.indexOf(e.target);
+        setTimeout(function () {
+          if (e.target.paused) buttons[idx].classList.add('show');
+        }, 700);
       });
     }, { threshold: 0.25 });
     vids.forEach(function (v) { io.observe(v); });
 
     // Separately, iOS can refuse to autoplay ANY video -- even muted --
-    // until the page has registered one real user gesture, no matter how
-    // ready the clip's data is. That's a different block than the buffering
-    // race above, and retrying on canplay never clears it; only an actual
-    // tap does. Use the page's first touch/click, wherever it lands, to
-    // retry whichever clip is on screen at that moment -- so the very first
-    // tab playing doesn't depend on an unrelated tap landing on a tab button
-    // first.
-    function unlockOnFirstGesture() {
+    // until the page has registered a real user gesture, no matter how
+    // ready the clip's data is. Retrying on canplay never clears that; only
+    // an actual tap does. The catch: not every touch qualifies -- a touch
+    // that turns into a scroll (the likeliest way anyone actually reaches
+    // this section) doesn't reliably count, so a single one-shot attempt
+    // can use itself up on a scroll and never fire again for the tap that
+    // follows. Keep retrying on every touch/click, wherever it lands, until
+    // nothing on screen is still paused.
+    function unlockOnGesture() {
+      var anyPaused = false;
       vids.forEach(function (v) {
         var r = v.getBoundingClientRect();
         var vh = window.innerHeight || document.documentElement.clientHeight;
-        if (r.bottom > 0 && r.top < vh) attemptPlay(v);
+        if (r.bottom <= 0 || r.top >= vh) return;
+        if (v.paused) { attemptPlay(v); anyPaused = true; }
       });
+      if (!anyPaused) {
+        ['touchstart', 'pointerdown', 'click'].forEach(function (evt) {
+          document.removeEventListener(evt, unlockOnGesture);
+        });
+      }
     }
     ['touchstart', 'pointerdown', 'click'].forEach(function (evt) {
-      document.addEventListener(evt, unlockOnFirstGesture, { once: true, passive: true });
+      document.addEventListener(evt, unlockOnGesture, { passive: true });
     });
   }
 
