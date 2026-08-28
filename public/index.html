@@ -17,9 +17,7 @@
 /* ------------------------------------------------------------------- NAV */
 
 #nav {
-  /* Above .clip (10000), which is itself lifted over the grain layer, so the
-     sticky bar still passes over the report clips as they scroll under it. */
-  position: sticky; top: 0; z-index: 10001;
+  position: sticky; top: 0; z-index: 90;
   background: rgba(8,8,10,0.6);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
@@ -232,21 +230,47 @@
      can change the video's box. */
   aspect-ratio: 16 / 9;
   align-self: start;
-  /* Lifts the clip above the site-wide film grain (body::after, z-index
-     9999 in ice.css). That grain is a fixed, permanently transform-animating
-     layer covering the whole viewport, so it sat directly on top of the
-     footage -- and a composited animating layer above a <video> forces the
-     browser to composite the video differently, which is the kind of thing
-     that re-fits it once as playback starts. Only the clips are lifted out
-     from under it; the grain still covers the rest of the site untouched.
-     #nav is raised past this so it still passes over the clip on scroll. */
-  z-index: 10000;
 }
 /* Held invisible until ice.js confirms a real decoded frame has landed
    (the 'loadeddata' event) -- the leftover one-time "stretch" on load is
    Chrome swapping in that first real frame after an initial placeholder
    render, which no CSS/layout trick prevents. Not showing the video until
    it's past that handoff hides it instead of fighting it. */
+/* The footage is PAINTED, not embedded. ice.js draws each presented frame
+   into a <canvas> and that canvas is what you actually see; the <video> is
+   only ever a frame source and is held invisible. Nothing on screen is a
+   video element any more, so the browser's video compositing -- overlay
+   planes, layer promotion, the one-time re-fit as playback starts -- has
+   nothing on the page to act on. A canvas is just a picture.
+
+   It also means the reveal can be a real wipe rather than a fade: the
+   canvas is clipped to nothing and opens left-to-right on the house
+   --t-cine/--e-out timing, with a red edge riding the front of it. */
+.clip > canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  display: block; z-index: 1;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path var(--t-cine) var(--e-out);
+}
+.clip.shown > canvas { clip-path: inset(0 0 0 0); }
+/* Only hidden once ice.js has a canvas actually painting; if the canvas
+   path is unavailable the video stays visible and behaves as before. */
+.clip.canvas-on > video { opacity: 0; }
+
+.clip::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 3px;
+  background: var(--red); z-index: 3; opacity: 0; pointer-events: none;
+}
+.clip.sweeping::before { animation: clip-sweep var(--t-cine) var(--e-out) forwards; }
+@keyframes clip-sweep {
+  from { left: 0;    opacity: 1; }
+  to   { left: 100%; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .clip > canvas { transition: none; }
+  .clip.sweeping::before { animation: none; }
+}
+
 .clip > video {
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; object-position: center; display: block;
@@ -256,29 +280,6 @@
      fast path -- it belongs on the video, which is the element that needs
      it, rather than on .clip, which only needs to paint like a normal box. */
   border-radius: 0.5px;
-}
-/* The video itself is never animated -- no opacity, no transform, ever.
-   Fading the video in was what put it on its own compositor layer for the
-   length of the transition and then took that layer away again at the end,
-   and a layer coming and going can re-raster the footage at a slightly
-   different subpixel offset ("shifts up, then back down, then settles").
-
-   The transition instead happens on a veil painted OVER the clip: a plain
-   pseudo-element that starts opaque and fades to nothing. The footage sits
-   there untouched the whole time, so there is nothing about it for the
-   browser to re-fit; only the veil animates, and a flat-coloured box has
-   no content that can shift.
-
-   It is applied by JS (.veiled) rather than being the default, so if the
-   script never runs the clip is simply visible instead of hidden. */
-.clip::after {
-  content: ""; position: absolute; inset: 0; z-index: 2;
-  background: var(--ink-2); pointer-events: none;
-  opacity: 0; transition: opacity 260ms var(--e-out);
-}
-.clip.veiled::after { opacity: 1; transition: none; }
-@media (prefers-reduced-motion: reduce) {
-  .clip::after { transition: none; }
 }
 .clip-empty {
   position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
