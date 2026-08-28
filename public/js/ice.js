@@ -323,8 +323,13 @@
       btn.type = 'button';
       btn.className = 'clip-play';
       btn.setAttribute('aria-label', 'Play clip');
-      btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"' +
-                      ' aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+      // Vertices (7.5,4.5) (21,12) (7.5,19.5): the centroid works out at
+      // exactly (12,12), the middle of the 24-unit viewBox, so the mark is
+      // centred by its own geometry rather than by nudging the box. At 34px
+      // the triangle reads about a third of the 58px button, which is the
+      // usual proportion -- the previous one measured under a fifth.
+      btn.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor"' +
+                      ' aria-hidden="true"><path d="M7.5 4.5 L21 12 L7.5 19.5 Z"/></svg>';
       btn.addEventListener('click', function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
